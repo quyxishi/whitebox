@@ -48,14 +48,22 @@ func NewProbeHandler() *ProbeHandler {
 	return &ProbeHandler{}
 }
 
-func (h *ProbeHandler) Probe(ctx *gin.Context) {
-	con, ok := ctx.GetQuery("ctx")
+type ProbeParams struct {
+	Connection   string
+	Schema       string
+	Target       string
+	MaxRedirects int
+	TimeoutMs    int
+}
+
+func (h *ProbeHandler) parseProbeParams(ctx *gin.Context) (out ProbeParams, ok bool) {
+	out.Connection, ok = ctx.GetQuery("ctx")
 	if !ok {
 		ctx.String(http.StatusBadRequest, "VPN connection query-param 'ctx' is missing")
 		return
 	}
 
-	schema := cmp.Or(utils.ParseScheme(con), "<empty>")
+	out.Schema = cmp.Or(utils.ParseScheme(out.Connection), "<empty>")
 
 	target, ok := ctx.GetQuery("target")
 	if !ok {
@@ -66,14 +74,44 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		target = "http://" + target
 	}
 
-	maxRedirects := 5
+	out.Target = target
+
+	out.MaxRedirects = 5
 	if v, err := strconv.Atoi(ctx.Query("max_redirects")); err == nil {
-		maxRedirects = v
+		out.MaxRedirects = v
 	}
 
-	timeoutMs := 3000
+	out.TimeoutMs = 3000
 	if v, err := strconv.Atoi(ctx.Query("timeout_ms")); err == nil {
-		timeoutMs = v
+		out.TimeoutMs = v
+	}
+
+	return out, true
+}
+
+func (h *ProbeHandler) parseXrayConf(ctx *gin.Context, params *ProbeParams) (out *core.Config, ok bool) {
+	outbound := GetOutbound(params.Connection, params.Schema)
+	if outbound == nil {
+		ctx.String(http.StatusBadRequest, "Unsupported protocol: %s", params.Schema)
+		return out, false
+	}
+
+	outbound.Parse(params.Connection)
+
+	config := fmt.Sprintf(`{"log":{"loglevel":"debug","access":"none","error":""},"outbounds":[%s]}`, outbound.GetOutboundStr())
+	out, err := core.LoadConfig("json", bytes.NewReader([]byte(config)))
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "Unable to load xray config: %s", err.Error())
+		return out, false
+	}
+
+	return out, true
+}
+
+func (h *ProbeHandler) Probe(ctx *gin.Context) {
+	params, ok := h.parseProbeParams(ctx)
+	if !ok {
+		return
 	}
 
 	// *
@@ -99,18 +137,8 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	// *
 
-	out := GetOutbound(con, schema)
-	if out == nil {
-		ctx.String(http.StatusBadRequest, "Unsupported protocol: %s", schema)
-		return
-	}
-
-	out.Parse(con)
-
-	conf := fmt.Sprintf(`{"log":{"loglevel":"debug","access":"none","error":""},"outbounds":[%s]}`, out.GetOutboundStr())
-	xrayConf, err := core.LoadConfig("json", bytes.NewReader([]byte(conf)))
-	if err != nil {
-		ctx.String(http.StatusInternalServerError, "Unable to load xray config: %s", err.Error())
+	xrayConf, ok := h.parseXrayConf(ctx, &params)
+	if !ok {
 		return
 	}
 
@@ -130,7 +158,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	defer instance.Close()
 
 	client := &http.Client{
-		Timeout: time.Duration(timeoutMs) * time.Millisecond,
+		Timeout: time.Duration(params.TimeoutMs) * time.Millisecond,
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				dest, err := net.ParseDestination(network + ":" + addr)
@@ -142,7 +170,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 			},
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) > maxRedirects {
+			if len(via) > params.MaxRedirects {
 				return http.ErrUseLastResponse
 			}
 			return nil
@@ -150,7 +178,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	}
 
 	success := 1
-	resp, err := client.Get(target)
+	resp, err := client.Get(params.Target)
 	if err != nil {
 		success = 0
 		log.Printf("[ERROR] probe/handler: connection failed: %v\n", err)
