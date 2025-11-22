@@ -135,6 +135,17 @@ scrape_configs:
 ###### Example Grafana dashboard 'hemera' powered by `whitebox` and `blackbox`
 ![hemera-dashboard](/docs/images/hemera-view.png)
 
+### Prometheus-less Approach
+
+While `whitebox` is designed with Prometheus integration in mind, it can also be used **independently** as a lightweight VPN probing tool.
+
+You can configure periodic probes using a simple `curl` command in a cron job or any task scheduler of your choice.
+
+###### Example Curl probe cron job
+```shell
+*/5 * * * * curl -s "http://localhost:9116/probe?ctx=<urlencoded_vpn_uri>&target=google.com" >> /var/log/whitebox-probe.log 2>&1
+```
+
 ## Roadmap
 
 - [ ] CI/CD for basic build/test workflow.
