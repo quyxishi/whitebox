@@ -1,0 +1,21 @@
+- targets: [ "https://google.com" ]
+  labels:
+    ctx: "vless://c9f5228c-8870-47bd-a92f-9b38c7c02b08@1.2.3.4:443?type=tcp&encryption=none&security=reality&pbk=DF-3KL2W4RuNB2HgsEDmLqHLvvTTN4_QfwUCUn8Uhy0&fp=firefox&sni=web.max.ru&sid=dc8wq0b47450f9&spx=%2F&flow=xtls-rprx-vision#ring0-raii-idx0"
+    client: "ring0-raii-idx0"  # Client unique identifier
+    protocol: "vless"          # VPN protocol
+    # You can also add additional labels here:
+    #   sni: "web.max.ru"
+    # And then, update relabel_configs in prometheus.yml job's config:
+    #   - source_labels: [sni]
+    #     target_label: sni
+- targets: [ "https://x.com" ]
+  labels:
+    ctx: "vless://e8d12cd5-b436-4ed1-967c-7001efe6cf06@1.2.3.4:443?type=tcp&encryption=none&security=reality&pbk=DF-3KL2W4RuNB2HgsEDmLqHLvvTTN4_QfwUCUn8Uhy0&fp=firefox&sni=web.max.ru&sid=dc8wq0b47450f9&spx=%2F&flow=xtls-rprx-vision#gate-raii-idx0"
+    client: "gate-raii-idx0"
+    protocol: "vless"
+- targets: [ "https://cloudflare.com" ]
+  labels:
+    # Wireguard connection must be supplied as: base64-encoded peer .ini config prefixed with 'wireguard://'
+    ctx: "wireguard://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IFNObk5ON0l4YzV0ekNYS2FJNGZXNnEyOFYzbnhGS2YxcmNoYWt4bWdBbHM9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCAxLjAuMC4xCk1UVSA9IDE0MjAKCiMgLTEKW1BlZXJdClB1YmxpY0tleSA9IHk2MTdkQ2dNM1g2bEtEanBkdDVhQ3dIWmROWW5OT0FwMFMyanFUbGpmZzA9CkFsbG93ZWRJUHMgPSAwLjAuMC4wLzAsIDo6LzAKRW5kcG9pbnQgPSAxLjIuMy40OjQ0Mw=="
+    client: "wg-raii-idx0"
+    protocol: "wireguard"

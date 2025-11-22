@@ -1,0 +1,46 @@
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+        preferred_ip_protocol: ip4
+        ip_protocol_fallback: true
+        follow_redirects: true
+        enable_http2: true
+    tcp:
+        ip_protocol_fallback: true
+    icmp:
+        ip_protocol_fallback: true
+        ttl: 64
+
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+    http:
+        ip_protocol_fallback: true
+        follow_redirects: true
+        enable_http2: true
+    tcp:
+        ip_protocol_fallback: true
+    icmp:
+        ip_protocol_fallback: true
+        ttl: 64
+
+  icmp_ttl5:
+    prober: icmp
+    timeout: 5s
+    http:
+        ip_protocol_fallback: true
+        follow_redirects: true
+        enable_http2: true
+    tcp:
+        ip_protocol_fallback: true
+    icmp:
+        ip_protocol_fallback: true
+        ttl: 5
+  
+  tls_connect:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      tls: true

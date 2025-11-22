@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: [ 'prometheus:9090', 'blackbox:9115' ]
+  # -- whitebox section begin --
+  - job_name: 'whitebox'
+    metrics_path: /probe
+    params:
+      max_redirects: [ '0' ]  # Do not follow redirects. (Optional)
+      timeout_ms: [ '3000' ]  # Probe timeout in ms. (Optional)
+    file_sd_configs:
+      - files: [ '/etc/prometheus/whitebox-sd-config.yml' ]  # File service discovery configurations (targets).
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target  # '__address__' -> 'target'.
+      - source_labels: [ctx]
+        target_label: __param_ctx     # 'ctx' -> '?ctx=...'.
+      - source_labels: [client]
+        target_label: client          # Label all probe's with client id.
+      - source_labels: [protocol]
+        target_label: protocol        # Label all probe's with used protocol.
+      - source_labels: [__param_target]
+        target_label: target          # 'target' -> '&target=...'.
+      - target_label: __address__
+        replacement: 127.0.0.1:9116   # The whitebox real hostname:port.
+  # -- whitebox section end --
+  - job_name: 'blackbox-icmp'
+    metrics_path: /probe
+    params:
+      module: [ icmp_ttl5 ]
+    static_configs:
+      - targets:
+        - 8.8.8.8
+        - 1.1.1.1
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: target
+      - target_label: __address__
+        replacement: blackbox:9115
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [ http_2xx ]
+    static_configs:
+      - targets:
+        - google.com
+        - cloudflare.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: target
+      - target_label: __address__
+        replacement: blackbox:9115
