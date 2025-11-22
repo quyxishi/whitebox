@@ -9,7 +9,7 @@
 
 <div align="center">
 
-<!-- badges here... -->
+[![Go Report Card](https://goreportcard.com/badge/github.com/quyxishi/whitebox)](https://goreportcard.com/report/github.com/quyxishi/whitebox)
 
 </div>
 
