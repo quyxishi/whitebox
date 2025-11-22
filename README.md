@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-    <code>whitebox</code> for <a href="https://prometheus.io/" target="_blank">Prometheus</a> provides monitoring of external VPN services powered by VMESS, VLESS, TROJAN, WG and SS.
+    <code>whitebox</code> for <a href="https://prometheus.io/" target="_blank">Prometheus</a> provides availability monitoring of external VPN services powered by VMESS, VLESS, TROJAN, WG and SS.
 </p>
 
 <div align="center">
