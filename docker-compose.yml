@@ -1,0 +1,7 @@
+services:
+  whitebox:
+    container_name: whitebox
+    build: .
+    ports:
+      - 9116:9116
+    restart: unless-stopped
