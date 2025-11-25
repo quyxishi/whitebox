@@ -1,4 +1,4 @@
-package serial
+package protocol
 
 import (
 	"encoding/base64"

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/quyxishi/whitebox/internal/serial"
+	"github.com/quyxishi/whitebox/internal/serial/xray/outbound/protocol"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gvcgo/vpnparser/pkgs/outbound"
@@ -33,8 +33,8 @@ import (
 
 func GetOutbound(uri string, schema string) (out outbound.IOutbound) {
 	switch schema {
-	case serial.SchemaWireguard:
-		out = &serial.WireguardOut{RawUri: uri}
+	case protocol.SchemaWireguard:
+		out = &protocol.WireguardOut{RawUri: uri}
 	default:
 		out = outbound.GetOutbound(outbound.XrayCore, uri)
 	}
