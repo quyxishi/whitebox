@@ -51,14 +51,16 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 		inner := *con.VmessInner
 
 		mid := net.Values(map[string][]string{
-			"type":       {extra.GetOrDefault[string, string](inner, "net")},
-			"security":   {extra.GetOrDefault[string, string](inner, "tls")},
-			"sni":        {extra.GetOrDefault[string, string](inner, "sni")},
-			"fp":         {extra.GetOr(inner, "fp", "chrome")},
-			"alpn":       {extra.GetOrDefault[string, string](inner, "alpn")},
-			"headerType": {extra.GetOr(inner, "type", "none")},
-			"path":       {extra.GetOr(inner, "path", "/")},
-			"host":       {extra.GetOrDefault[string, string](inner, "host")},
+			"type":        {extra.GetOrDefault[string, string](inner, "net")},
+			"security":    {extra.GetOrDefault[string, string](inner, "tls")},
+			"sni":         {extra.GetOrDefault[string, string](inner, "sni")},
+			"fp":          {extra.GetOr(inner, "fp", "chrome")},
+			"alpn":        {extra.GetOrDefault[string, string](inner, "alpn")},
+			"headerType":  {extra.GetOr(inner, "type", "none")},
+			"path":        {extra.GetOr(inner, "path", "/")},
+			"host":        {extra.GetOrDefault[string, string](inner, "host")},
+			"seed":        {extra.GetOrDefault[string, string](inner, "path")},
+			"serviceName": {extra.GetOrDefault[string, string](inner, "path")},
 		})
 		query = mid
 	}
