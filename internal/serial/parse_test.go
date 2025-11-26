@@ -22,6 +22,8 @@ const (
 	URI_VLESS_GRPC_REALITY    string = "vless://6883ff2d-d3c1-4597-a541-65c16e41065e@1.2.3.4:443?type=grpc&encryption=none&serviceName=sn&authority=au&security=reality&pbk=WjuE_vMYhy6_CXH1lwtPbllnbQZYHk9nuXubS9YicRU&fp=chrome&sni=google.com&sid=03cbc01665&spx=%2F#9yfgrep5"
 	URI_VLESS_HTTPUPGRADE_TLS string = "vless://84b478e1-6010-4560-83c4-b15748f6590d@1.2.3.4:443?type=httpupgrade&encryption=none&path=%2F&host=h&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&sni=google.com&ech=AF3%2BDQBZAAAgACD6CLXeT10x7ZYlrBSiwjbKiMKsX40IaoXAsbzhQ5xDdgAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D#l7clt36p"
 	URI_VLESS_XHTTP_REALITY   string = "vless://4bdc409f-173c-4f3e-9b38-814af2cff886@1.2.3.4:443?type=xhttp&encryption=none&path=%2F&host=google.com&mode=packet-up&security=reality&pbk=bkjtnsLGV5l4lPp1hN9LwbMK5hIHW_tjqZVdKakxlnY&fp=randomizednoalpn&sni=google.com&sid=f07b3894&spx=%2F#ring0-raii-xhttp"
+
+	URI_WIREGUARD string = "wireguard://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IFNObk5ON0l4YzN0emxYS2FJNGY4NnEyOFYzbnhGS2YxcmNoYWt4bWdBbHM9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCAxLjAuMC4xCk1UVSA9IDE0MjAKCiMgLTEKW1BlZXJdClB1YmxpY0tleSA9IHk2MTdkQ2dNM1g2bEtEanBkdDVhR2NBWmROWW5OT0FwMFMyanFUbGpmZzA9CkFsbG93ZWRJUHMgPSAwLjAuMC4wLzAsIDo6LzAKRW5kcG9pbnQgPSAxLjIuMy40OjI3Nzg5"
 )
 
 func xrayParseAndLoad(t *testing.T, uri string) {
@@ -92,4 +94,10 @@ func TestParseURI_VlessHttpupgradeTls(t *testing.T) {
 
 func TestParseURI_VlessXhttpReality(t *testing.T) {
 	xrayParseAndLoad(t, URI_VLESS_XHTTP_REALITY)
+}
+
+// -- WIREGUARD
+
+func TestParseURI_Wireguard(t *testing.T) {
+	xrayParseAndLoad(t, URI_WIREGUARD)
 }

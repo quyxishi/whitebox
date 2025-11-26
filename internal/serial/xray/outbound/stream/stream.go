@@ -25,8 +25,8 @@ const (
 /* https://xtls.github.io/config/transport.html#streamsettingsobject */
 // skip! go:generate gonstructor --type=StreamConfig --constructorTypes=allArgs,builder --output=stream_gen.go
 type StreamConfig struct {
-	Network  string `json:"network"`
-	Security string `json:"security"`
+	Network  string `json:"network,omitempty"`
+	Security string `json:"security,omitempty"`
 
 	RawSettings         *RawConfig           `json:"rawSettings,omitempty"`
 	TlsSettings         *TlsConfig           `json:"tlsSettings,omitempty"`
@@ -63,6 +63,8 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 			"serviceName": {extra.GetOrDefault[string, string](inner, "path")},
 		})
 		query = mid
+	case extra.SchemeWireguard:
+		return StreamConfig{}, nil
 	}
 
 	out = StreamConfig{

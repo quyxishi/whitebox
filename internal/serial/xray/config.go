@@ -10,6 +10,7 @@ import (
 	"github.com/quyxishi/whitebox/internal/serial/xray/outbound/extra"
 	"github.com/quyxishi/whitebox/internal/serial/xray/outbound/protocol"
 	"github.com/quyxishi/whitebox/internal/serial/xray/outbound/stream"
+	"gopkg.in/ini.v1"
 )
 
 /*
@@ -57,6 +58,16 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 		}
 
 		con.VmessInner = &inner
+	case extra.SchemeWireguard:
+		outer, err := base64.StdEncoding.DecodeString(url.Hostname())
+		if err != nil {
+			return out, err
+		}
+
+		con.WireguardInner, err = ini.Load(outer)
+		if err != nil {
+			return out, err
+		}
 	}
 
 	outboundConfig := outbound.OutboundConfig{
@@ -73,6 +84,8 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 		protocolOutbound, err = protocol.ParseVmessOutbound(&con)
 	case extra.SchemeVless:
 		protocolOutbound, err = protocol.ParseVlessOutbound(&con)
+	case extra.SchemeWireguard:
+		protocolOutbound = protocol.ParseWireguardOutbound(&con)
 	default:
 		log.Panicf("[FATAL] serial/xray/parse: unexpected schema: %s\n", url.Scheme)
 	}

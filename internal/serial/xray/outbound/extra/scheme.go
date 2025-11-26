@@ -1,6 +1,7 @@
 package extra
 
 const (
-	SchemeVmess string = "vmess"
-	SchemeVless string = "vless"
+	SchemeVmess     string = "vmess"
+	SchemeVless     string = "vless"
+	SchemeWireguard string = "wireguard"
 )
