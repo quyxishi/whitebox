@@ -10,7 +10,7 @@ package outbound
 */
 // skip! go:generate gonstructor --type=MuxConfig --constructorTypes=allArgs,builder --output=mux_gen.go
 type MuxConfig struct {
-	Enabled         bool   `json:"enabled,omitempty"`
+	Enabled         bool   `json:"enabled"`
 	Concurrency     int    `json:"concurrency,omitempty"`
 	XudpConcurrency int    `json:"xudpConcurrency,omitempty"`
 	XudpProxyUDP443 string `json:"xudpProxyUDP443,omitempty"`

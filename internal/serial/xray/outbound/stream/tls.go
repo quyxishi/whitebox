@@ -11,8 +11,8 @@ package stream
 	"fingerprint": "chrome"
 },
 */
-// skip! go:generate gonstructor --type=TlsSettings --constructorTypes=allArgs,builder --output=tls_gen.go
-type TlsSettings struct {
+// skip! go:generate gonstructor --type=TlsConfig --constructorTypes=allArgs,builder --output=tls_gen.go
+type TlsConfig struct {
 	AllowInsecure bool     `json:"allowInsecure,omitempty"`
 	SNI           string   `json:"serverName,omitempty"`
 	Alpn          []string `json:"alpn,omitempty"`
