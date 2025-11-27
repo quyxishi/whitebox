@@ -15,7 +15,7 @@ package stream
 type RealityConfig struct {
 	SNI           string `json:"serverName,omitempty"`
 	Fingerprint   string `json:"fingerprint,omitempty"`
-	Show          bool   `json:"show,omitempty"`
+	Show          bool   `json:"show"`
 	PublicKey     string `json:"publicKey,omitempty"`
 	ShortId       string `json:"shortId,omitempty"`
 	SpiderX       string `json:"spiderX,omitempty"`

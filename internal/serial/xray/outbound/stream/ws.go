@@ -17,5 +17,5 @@ type WsConfig struct {
 	Path                string            `json:"path,omitempty"`
 	Host                string            `json:"host,omitempty"`
 	Headers             map[string]string `json:"headers,omitempty"`
-	HeartbeatPeriod     int               `json:"heartbeatPeriod,omitempty"`
+	HeartbeatPeriod     int               `json:"heartbeatPeriod"`
 }

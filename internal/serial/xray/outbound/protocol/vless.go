@@ -51,9 +51,9 @@ func ParseVlessOutbound(con *extra.ConnectionExtra) (out VlessOutbound, err erro
 					&VlessUsers{
 						ID:         con.URL.User.Username(),
 						Email:      cmp.Or(con.URL.Fragment, "t@t.tt"),
-						Security:   cmp.Or(con.Query.Get("security"), "auto"),
+						Security:   "auto",
 						Encryption: cmp.Or(con.Query.Get("encryption"), "none"),
-						Flow:       cmp.Or(con.Query.Get("flow"), "xtls-rprx-vision"),
+						Flow:       con.Query.Get("flow"),
 					},
 				},
 			},

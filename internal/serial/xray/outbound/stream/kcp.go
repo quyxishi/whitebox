@@ -17,13 +17,13 @@ package stream
 */
 // skip! go:generate gonstructor --type=KcpConfig --type=KcpHeader --constructorTypes=allArgs,builder --output=kcp_gen.go
 type KcpConfig struct {
-	MTU              int        `json:"mtu,omitempty"`
-	TTI              int        `json:"tti,omitempty"`
-	UplinkCapacity   int        `json:"uplinkCapacity,omitempty"`
-	DownlinkCapacity int        `json:"downlinkCapacity,omitempty"`
-	Congestion       bool       `json:"congestion,omitempty"`
-	ReadBufferSize   int        `json:"readBufferSize,omitempty"`
-	WriteBufferSize  int        `json:"writeBufferSize,omitempty"`
+	MTU              int        `json:"mtu"`
+	TTI              int        `json:"tti"`
+	UplinkCapacity   int        `json:"uplinkCapacity"`
+	DownlinkCapacity int        `json:"downlinkCapacity"`
+	Congestion       bool       `json:"congestion"`
+	ReadBufferSize   int        `json:"readBufferSize"`
+	WriteBufferSize  int        `json:"writeBufferSize"`
 	Header           *KcpHeader `json:"header,omitempty"`
 	Seed             string     `json:"seed,omitempty"`
 }
