@@ -50,7 +50,7 @@ func ParseShadowsocksOutbound(con *extra.ConnectionExtra) (out ShadowsocksOutbou
 		Port:       port,
 		Method:     ssExtra[0],
 		Password:   ssExtra[1],
-		UOT:        false,
+		UOT:        true,
 		UOTVersion: 2,
 		Level:      1,
 	}
