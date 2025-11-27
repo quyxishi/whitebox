@@ -140,7 +140,12 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		ctx.String(http.StatusInternalServerError, "Unable to start xray instance: %s", err.Error())
 		return
 	}
-	defer instance.Close()
+
+	defer func() {
+		if err := instance.Close(); err != nil {
+			log.Printf("[ERROR] probe/handler: failed to close xray instance: %v", err)
+		}
+	}()
 
 	client := &http.Client{
 		Timeout: time.Duration(params.TimeoutMs) * time.Millisecond,
@@ -169,7 +174,11 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		log.Printf("[ERROR] probe/handler: connection failed: %v\n", err)
 	}
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				log.Printf("[ERROR] probe/handler: failed to close response.body instance: %v", err)
+			}
+		}()
 	}
 
 	probe_elapsed := time.Since(probe_entry).Seconds()
