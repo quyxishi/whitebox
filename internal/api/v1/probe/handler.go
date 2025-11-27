@@ -4,17 +4,15 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/quyxishi/whitebox/internal/serial/xray/outbound/protocol"
+	"github.com/quyxishi/whitebox/internal/serial"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gvcgo/vpnparser/pkgs/outbound"
 	"github.com/gvcgo/vpnparser/pkgs/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -30,16 +28,6 @@ import (
 	_ "github.com/xtls/xray-core/transport/internet/reality"
 	_ "github.com/xtls/xray-core/transport/internet/tcp"
 )
-
-func GetOutbound(uri string, schema string) (out outbound.IOutbound) {
-	switch schema {
-	case protocol.SchemaWireguard:
-		out = &protocol.WireguardOut{RawUri: uri}
-	default:
-		out = outbound.GetOutbound(outbound.XrayCore, uri)
-	}
-	return
-}
 
 type ProbeHandler struct {
 }
@@ -90,16 +78,13 @@ func (h *ProbeHandler) parseProbeParams(ctx *gin.Context) (out ProbeParams, ok b
 }
 
 func (h *ProbeHandler) parseXrayConf(ctx *gin.Context, params *ProbeParams) (out *core.Config, ok bool) {
-	outbound := GetOutbound(params.Connection, params.Schema)
-	if outbound == nil {
-		ctx.String(http.StatusBadRequest, "Unsupported protocol: %s", params.Schema)
+	config, err := serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, params.Connection, &serial.ParseParams{EnableDebug: true})
+	if err != nil {
+		ctx.String(http.StatusBadRequest, "Unable to parse uri-based config for xray-core due: %v", err)
 		return out, false
 	}
 
-	outbound.Parse(params.Connection)
-
-	config := fmt.Sprintf(`{"log":{"loglevel":"debug","access":"none","error":""},"outbounds":[%s]}`, outbound.GetOutboundStr())
-	out, err := core.LoadConfig("json", bytes.NewReader([]byte(config)))
+	out, err = core.LoadConfig("json", bytes.NewReader([]byte(config)))
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, "Unable to load xray config: %s", err.Error())
 		return out, false
