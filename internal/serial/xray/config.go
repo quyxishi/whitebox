@@ -3,6 +3,7 @@ package xray
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/url"
 
@@ -96,7 +97,9 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 	case extra.SchemeWireguard:
 		protocolOutbound = protocol.ParseWireguardOutbound(&con)
 	default:
-		log.Panicf("[FATAL] serial/xray/parse: unexpected schema: %s\n", url.Scheme)
+		err = fmt.Errorf("unexpected schema: %s\n", url.Scheme)
+		log.Printf("[ERROR] serial/xray/parse: %s\n", err)
+		return "", err
 	}
 
 	if err != nil {
