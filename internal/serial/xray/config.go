@@ -70,9 +70,14 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 		}
 	}
 
+	conProtocol := url.Scheme
+	if conProtocol == extra.SchemeShadowsocks {
+		conProtocol = "shadowsocks"
+	}
+
 	outboundConfig := outbound.OutboundConfig{
 		Tag:      "proxy",
-		Protocol: url.Scheme,
+		Protocol: conProtocol,
 		Mux:      &outbound.MuxConfig{Enabled: false, Concurrency: -1},
 	}
 
@@ -84,6 +89,10 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 		protocolOutbound, err = protocol.ParseVmessOutbound(&con)
 	case extra.SchemeVless:
 		protocolOutbound, err = protocol.ParseVlessOutbound(&con)
+	case extra.SchemeTrojan:
+		protocolOutbound, err = protocol.ParseTrojanOutbound(&con)
+	case extra.SchemeShadowsocks:
+		protocolOutbound, err = protocol.ParseShadowsocksOutbound(&con)
 	case extra.SchemeWireguard:
 		protocolOutbound = protocol.ParseWireguardOutbound(&con)
 	default:

@@ -126,6 +126,7 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 			SNI:           query.Get("sni"),
 			Alpn:          strings.Split(query.Get("alpn"), ","),
 			Fingerprint:   query.Get("fp"),
+			EchConfigList: query.Get("ech"),
 		}
 	case SECURITY_REALITY:
 		out.RealitySettings = &RealityConfig{

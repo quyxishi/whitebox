@@ -23,6 +23,20 @@ const (
 	URI_VLESS_HTTPUPGRADE_TLS string = "vless://84b478e1-6010-4560-83c4-b15748f6590d@1.2.3.4:443?type=httpupgrade&encryption=none&path=%2F&host=h&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&sni=google.com&ech=AF3%2BDQBZAAAgACD6CLXeT10x7ZYlrBSiwjbKiMKsX40IaoXAsbzhQ5xDdgAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D#l7clt36p"
 	URI_VLESS_XHTTP_REALITY   string = "vless://4bdc409f-173c-4f3e-9b38-814af2cff886@1.2.3.4:443?type=xhttp&encryption=none&path=%2F&host=google.com&mode=packet-up&security=reality&pbk=bkjtnsLGV5l4lPp1hN9LwbMK5hIHW_tjqZVdKakxlnY&fp=randomizednoalpn&sni=google.com&sid=f07b3894&spx=%2F#ring0-raii-xhttp"
 
+	URI_TROJAN_RAW_REALITY     string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=tcp&security=reality&pbk=rh_ToroMlTyQIYIQcH41RmIiaHr5FKtnByRUYA82i3o&fp=chrome&sni=google.com&sid=9675d1&spx=%2F#42j1zdc0"
+	URI_TROJAN_MKCP            string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=kcp&headerType=dtls&seed=8omUFe2xgl&security=none#42j1zdc0"
+	URI_TROJAN_WEBSOCKET_TLS   string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=ws&path=%2F&host=&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACAGdEfh%2FUGI%2By7XzHs1FPgnkmxw0Ryv09Jm%2B19RCBMvEgAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com#42j1zdc0"
+	URI_TROJAN_GRPC_TLS        string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=grpc&serviceName=sn&authority=au&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACAGdEfh%2FUGI%2By7XzHs1FPgnkmxw0Ryv09Jm%2B19RCBMvEgAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com#42j1zdc0"
+	URI_TROJAN_HTTPUPGRADE_TLS string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=httpupgrade&path=%2Fp&host=h&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACAGdEfh%2FUGI%2By7XzHs1FPgnkmxw0Ryv09Jm%2B19RCBMvEgAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com#42j1zdc0"
+	URI_TROJAN_XHTTP_REALITY   string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=xhttp&path=%2F&host=&mode=auto&security=reality&pbk=TYPtWkMZ2VTWKYJnrmpPR8KM8zq9lLps-FtU9GMEWFM&fp=chrome&sni=google.com&sid=52&spx=%2F#42j1zdc0"
+
+	URI_SHADOWSOCKS_RAW_TLS         string = "ss://MjAyMi1ibGFrZTMtY2hhY2hhMjAtcG9seTEzMDU6SFJvWEFQRWh1M1BLQWk1bCtvWnR0MmxReDA3NUVVUktRWnpLa1BVeWlqWT0@1.2.3.4:443?type=tcp&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACA%2BQLsnaagAGGUJVcHx5XuKje8dAGIus54wdz11d1dbFAAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com"
+	URI_SHADOWSOCKS_MKCP            string = "ss://MjAyMi1ibGFrZTMtY2hhY2hhMjAtcG9seTEzMDU6SFJvWEFQRWh1M1BLQWk1bCtvWnR0MmxReDA3NUVVUktRWnpLa1BVeWlqWT0@1.2.3.4:443?type=kcp&headerType=dtls&seed=5y65LuZh6j"
+	URI_SHADOWSOCKS_WEBSOCKET_TLS   string = "ss://MjAyMi1ibGFrZTMtY2hhY2hhMjAtcG9seTEzMDU6SFJvWEFQRWh1M1BLQWk1bCtvWnR0MmxReDA3NUVVUktRWnpLa1BVeWlqWT0@1.2.3.4:443?type=ws&path=%2Fp&host=h&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACD21HO7PNeZMft4mWQiZguw0MzGRrK2oNZjXe8gbTbfGQAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com"
+	URI_SHADOWSOCKS_GRPC_TLS        string = "ss://MjAyMi1ibGFrZTMtY2hhY2hhMjAtcG9seTEzMDU6SFJvWEFQRWh1M1BLQWk1bCtvWnR0MmxReDA3NUVVUktRWnpLa1BVeWlqWT0@1.2.3.4:443?type=grpc&serviceName=sn&authority=au&mode=multi&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACD21HO7PNeZMft4mWQiZguw0MzGRrK2oNZjXe8gbTbfGQAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com"
+	URI_SHADOWSOCKS_HTTPUPGRADE_TLS string = "ss://MjAyMi1ibGFrZTMtY2hhY2hhMjAtcG9seTEzMDU6SFJvWEFQRWh1M1BLQWk1bCtvWnR0MmxReDA3NUVVUktRWnpLa1BVeWlqWT0@1.2.3.4:443?type=httpupgrade&path=%2Fp&host=h&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACD21HO7PNeZMft4mWQiZguw0MzGRrK2oNZjXe8gbTbfGQAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com"
+	URI_SHADOWSOCKS_XHTTP_TLS       string = "ss://MjAyMi1ibGFrZTMtY2hhY2hhMjAtcG9seTEzMDU6SFJvWEFQRWh1M1BLQWk1bCtvWnR0MmxReDA3NUVVUktRWnpLa1BVeWlqWT0@1.2.3.4:443?type=xhttp&path=%2Fp&host=h&mode=auto&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACD21HO7PNeZMft4mWQiZguw0MzGRrK2oNZjXe8gbTbfGQAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com"
+
 	URI_WIREGUARD string = "wireguard://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IFNObk5ON0l4YzN0emxYS2FJNGY4NnEyOFYzbnhGS2YxcmNoYWt4bWdBbHM9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCAxLjAuMC4xCk1UVSA9IDE0MjAKCiMgLTEKW1BlZXJdClB1YmxpY0tleSA9IHk2MTdkQ2dNM1g2bEtEanBkdDVhR2NBWmROWW5OT0FwMFMyanFUbGpmZzA9CkFsbG93ZWRJUHMgPSAwLjAuMC4wLzAsIDo6LzAKRW5kcG9pbnQgPSAxLjIuMy40OjI3Nzg5"
 )
 
@@ -94,6 +108,58 @@ func TestParseURI_VlessHttpupgradeTls(t *testing.T) {
 
 func TestParseURI_VlessXhttpReality(t *testing.T) {
 	xrayParseAndLoad(t, URI_VLESS_XHTTP_REALITY)
+}
+
+// -- TROJAN
+
+func TestParseURI_TrojanRawReality(t *testing.T) {
+	xrayParseAndLoad(t, URI_TROJAN_RAW_REALITY)
+}
+
+func TestParseURI_TrojanMkcp(t *testing.T) {
+	xrayParseAndLoad(t, URI_TROJAN_MKCP)
+}
+
+func TestParseURI_TrojanWebsocketTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_TROJAN_WEBSOCKET_TLS)
+}
+
+func TestParseURI_TrojanGrpcTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_TROJAN_GRPC_TLS)
+}
+
+func TestParseURI_TrojanHttpupgradeTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_TROJAN_HTTPUPGRADE_TLS)
+}
+
+func TestParseURI_TrojanXhttpReality(t *testing.T) {
+	xrayParseAndLoad(t, URI_TROJAN_XHTTP_REALITY)
+}
+
+// -- SHADOWSOCKS
+
+func TestParseURI_ShadowsocksRawTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_SHADOWSOCKS_RAW_TLS)
+}
+
+func TestParseURI_ShadowsocksMkcp(t *testing.T) {
+	xrayParseAndLoad(t, URI_SHADOWSOCKS_MKCP)
+}
+
+func TestParseURI_ShadowsocksWebsocketTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_SHADOWSOCKS_WEBSOCKET_TLS)
+}
+
+func TestParseURI_ShadowsocksGrpcTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_SHADOWSOCKS_GRPC_TLS)
+}
+
+func TestParseURI_ShadowsocksHttpupgradeTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_SHADOWSOCKS_HTTPUPGRADE_TLS)
+}
+
+func TestParseURI_ShadowsocksXhttpTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_SHADOWSOCKS_XHTTP_TLS)
 }
 
 // -- WIREGUARD

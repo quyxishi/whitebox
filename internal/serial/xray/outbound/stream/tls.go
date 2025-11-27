@@ -17,4 +17,5 @@ type TlsConfig struct {
 	SNI           string   `json:"serverName,omitempty"`
 	Alpn          []string `json:"alpn,omitempty"`
 	Fingerprint   string   `json:"fingerprint,omitempty"`
+	EchConfigList string   `json:"echConfigList,omitempty"`
 }
