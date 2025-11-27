@@ -78,7 +78,17 @@ func (h *ProbeHandler) parseProbeParams(ctx *gin.Context) (out ProbeParams, ok b
 }
 
 func (h *ProbeHandler) parseXrayConf(ctx *gin.Context, params *ProbeParams) (out *core.Config, ok bool) {
-	config, err := serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, params.Connection, &serial.ParseParams{EnableDebug: true})
+	var config string
+	var err error
+	switch params.Schema {
+	case "http://", "https://":
+		log.Println("[DEBUG] probe/handler: assuming that ctx is json subscription link")
+		config, err = serial.ParseSubscriptionURI(params.Connection, &serial.ParseSubParams{EnableDebug: true})
+	default:
+		log.Println("[DEBUG] probe/handler: assuming that ctx is direct vpn connection uri")
+		config, err = serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, params.Connection, &serial.ParseParams{EnableDebug: true})
+	}
+
 	if err != nil {
 		ctx.String(http.StatusBadRequest, "Unable to parse uri-based config for xray-core due: %v", err)
 		return out, false

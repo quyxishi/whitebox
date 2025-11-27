@@ -1,9 +1,15 @@
 package serial
 
 import (
+	"cmp"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
+	"time"
 
+	"github.com/gogf/gf/v2/encoding/gjson"
 	"github.com/quyxishi/whitebox/internal/serial/xray"
 
 	_ "github.com/xtls/xray-core/main/json"
@@ -48,5 +54,54 @@ func ParseURI(backend BackendType, uri string, params *ParseParams) (out string,
 		log.Panicf("[FATAL] serial/parse: unexpected backend: %v\n", backend)
 	}
 
+	return out, nil
+}
+
+type ParseSubParams struct {
+	EnableDebug  bool // {"loglevel":"debug","access":"none","error":""}
+	FetchTimeout time.Duration
+}
+
+func ParseSubscriptionURI(json_sub_uri string, params *ParseSubParams) (out string, err error) {
+	cli := http.Client{Timeout: cmp.Or(params.FetchTimeout, 5*time.Second)}
+	resp, err := cli.Get(json_sub_uri)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch json subscription uri: %v", err)
+	}
+	if resp != nil {
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				log.Printf("[ERROR] serial/parse: failed to close response.body instance: %v", err)
+			}
+		}()
+	}
+
+	outRaw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read body from json subscription uri: %v", err)
+	}
+
+	if params.EnableDebug {
+		debugFields := []struct {
+			key string
+			val any
+		}{
+			{"log.loglevel", "debug"},
+			{"log.access", "none"},
+			{"log.error", ""},
+		}
+
+		j := gjson.New(outRaw)
+
+		for _, s := range debugFields {
+			if err := j.Set(s.key, s.val); err != nil {
+				return "", fmt.Errorf("failed to patch config with key '%s': %w", s.key, err)
+			}
+		}
+
+		outRaw = []byte(j.MustToJsonString())
+	}
+
+	out = string(outRaw)
 	return out, nil
 }

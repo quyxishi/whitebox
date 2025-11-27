@@ -38,6 +38,8 @@ const (
 	URI_SHADOWSOCKS_XHTTP_TLS       string = "ss://MjAyMi1ibGFrZTMtY2hhY2hhMjAtcG9seTEzMDU6SFJvWEFQRWh1M1BLQWk1bCtvWnR0MmxReDA3NUVVUktRWnpLa1BVeWlqWT0@1.2.3.4:443?type=xhttp&path=%2Fp&host=h&mode=auto&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACD21HO7PNeZMft4mWQiZguw0MzGRrK2oNZjXe8gbTbfGQAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com"
 
 	URI_WIREGUARD string = "wireguard://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IFNObk5ON0l4YzN0emxYS2FJNGY4NnEyOFYzbnhGS2YxcmNoYWt4bWdBbHM9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCAxLjAuMC4xCk1UVSA9IDE0MjAKCiMgLTEKW1BlZXJdClB1YmxpY0tleSA9IHk2MTdkQ2dNM1g2bEtEanBkdDVhR2NBWmROWW5OT0FwMFMyanFUbGpmZzA9CkFsbG93ZWRJUHMgPSAwLjAuMC4wLzAsIDo6LzAKRW5kcG9pbnQgPSAxLjIuMy40OjI3Nzg5"
+
+	// URI_SUBJSON_VLESS string = "http://1.2.3.4:2096/json/l08vryrtn0gb07s4"
 )
 
 func xrayParseAndLoad(t *testing.T, uri string) {
@@ -167,3 +169,23 @@ func TestParseURI_ShadowsocksXhttpTls(t *testing.T) {
 func TestParseURI_Wireguard(t *testing.T) {
 	xrayParseAndLoad(t, URI_WIREGUARD)
 }
+
+// -- SUBJSON
+
+// func TestParseSubscriptionURI_Vless(t *testing.T) {
+// 	cfg, err := serial.ParseSubscriptionURI(URI_SUBJSON_VLESS, &serial.ParseSubParams{EnableDebug: true})
+// 	if err != nil {
+// 		t.Errorf("error occurred during parsing: %v", err)
+// 		return
+// 	}
+
+// 	t.Log(cfg)
+
+// 	_, err = core.LoadConfig("json", bytes.NewReader([]byte(cfg)))
+// 	if err != nil {
+// 		t.Errorf("unable to load xray config: %s", err.Error())
+// 		return
+// 	}
+
+// 	t.Log("successfully loaded uri-based parsed config into xray-core")
+// }
