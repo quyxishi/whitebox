@@ -29,8 +29,7 @@ import (
 	_ "github.com/xtls/xray-core/transport/internet/tcp"
 )
 
-type ProbeHandler struct {
-}
+type ProbeHandler struct{}
 
 func NewProbeHandler() *ProbeHandler {
 	return &ProbeHandler{}
@@ -38,7 +37,7 @@ func NewProbeHandler() *ProbeHandler {
 
 type ProbeParams struct {
 	Connection   string
-	Schema       string
+	Scheme       string
 	Target       string
 	MaxRedirects int
 	TimeoutMs    int
@@ -51,7 +50,7 @@ func (h *ProbeHandler) parseProbeParams(ctx *gin.Context) (out ProbeParams, ok b
 		return
 	}
 
-	out.Schema = cmp.Or(utils.ParseScheme(out.Connection), "<empty>")
+	out.Scheme = cmp.Or(utils.ParseScheme(out.Connection), "<empty>")
 
 	target, ok := ctx.GetQuery("target")
 	if !ok {
@@ -80,12 +79,12 @@ func (h *ProbeHandler) parseProbeParams(ctx *gin.Context) (out ProbeParams, ok b
 func (h *ProbeHandler) parseXrayConf(ctx *gin.Context, params *ProbeParams) (out *core.Config, ok bool) {
 	var config string
 	var err error
-	switch params.Schema {
+	switch params.Scheme {
 	case "http://", "https://":
-		log.Println("[DEBUG] probe/handler: assuming that ctx is json subscription link")
+		slog.Debug("assuming that ctx is json subscription link")
 		config, err = serial.ParseSubscriptionURI(params.Connection, &serial.ParseSubParams{EnableDebug: true})
 	default:
-		log.Println("[DEBUG] probe/handler: assuming that ctx is direct vpn connection uri")
+		slog.Debug("assuming that ctx is direct vpn connection uri")
 		config, err = serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, params.Connection, &serial.ParseParams{EnableDebug: true})
 	}
 
@@ -108,6 +107,20 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	if !ok {
 		return
 	}
+
+	xrayConf, ok := h.parseXrayConf(ctx, &params)
+	if !ok {
+		return
+	}
+
+	slog.Info(
+		"recv probe w/",
+		"scheme", params.Scheme,
+		"target", params.Target,
+		"method", "GET",
+		"maxRedirects", params.MaxRedirects,
+		"timeoutMs", params.TimeoutMs,
+	)
 
 	// *
 
@@ -143,17 +156,18 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	instance, err := core.New(xrayConf)
 	if err != nil {
+		slog.Error("failed to init xray instance", "due", err)
 		ctx.String(http.StatusInternalServerError, "Unable to init xray instance: %s", err.Error())
 		return
 	}
 	if err := instance.Start(); err != nil {
+		slog.Error("failed to start xray instance", "due", err)
 		ctx.String(http.StatusInternalServerError, "Unable to start xray instance: %s", err.Error())
 		return
 	}
-
 	defer func() {
 		if err := instance.Close(); err != nil {
-			log.Printf("[ERROR] probe/handler: failed to close xray instance: %v", err)
+			slog.Error("failed to close xray instance", "due", err)
 		}
 	}()
 
@@ -180,13 +194,13 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	success := 1
 	resp, err := client.Get(params.Target)
 	if err != nil {
-		success = 0
-		log.Printf("[ERROR] probe/handler: connection failed: %v\n", err)
+		probeSuccess = 0
+		slog.Error("probe failed", "due", err)
 	}
 	if resp != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				log.Printf("[ERROR] probe/handler: failed to close response.body instance: %v", err)
+				slog.Error("failed to close response.Body instance", "due", err)
 			}
 		}()
 	}
