@@ -69,7 +69,7 @@ func (h *ProbeHandler) parseProbeParams(ctx *gin.Context) (out ProbeParams, ok b
 		out.MaxRedirects = v
 	}
 
-	out.TimeoutMs = 3000
+	out.TimeoutMs = 5000
 	if v, err := strconv.Atoi(ctx.Query("timeout_ms")); err == nil {
 		out.TimeoutMs = v
 	}
