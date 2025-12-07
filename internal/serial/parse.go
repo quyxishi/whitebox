@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -39,19 +40,19 @@ func ParseURI(backend BackendType, uri string, params *ParseParams) (out string,
 
 		url, err := url.Parse(uri)
 		if err != nil {
-			log.Printf("[ERROR] serial/parse: unable to parse uri-based config as url.URL structure due: %v\n", err)
+			slog.Error("unable to parse uri-based config as url.URL structure", "due", err)
 			return "", err
 		}
 
 		out, err = xrayConfig.Parse(url)
 		if err != nil {
-			log.Printf("[ERROR] serial/parse: unable to parse uri-based config for xray-core due: %v\n", err)
+			slog.Error("unable to parse uri-based config for xray-core", "due", err)
 			return "", err
 		}
 	case CONFIG_BACKEND_SINGBOX:
-		log.Panicln("[FATAL] serial/parse: uri-based config parser not implemented for 'sing-box' backend")
+		log.Panicln("uri-based config parser not implemented for 'sing-box' backend")
 	default:
-		log.Panicf("[FATAL] serial/parse: unexpected backend: %v\n", backend)
+		log.Panicf("unexpected backend: %v\n", backend)
 	}
 
 	return out, nil
@@ -71,7 +72,7 @@ func ParseSubscriptionURI(json_sub_uri string, params *ParseSubParams) (out stri
 	if resp != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				log.Printf("[ERROR] serial/parse: failed to close response.body instance: %v", err)
+				slog.Error("failed to close response.body instance", "due", err)
 			}
 		}()
 	}

@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/quyxishi/whitebox/internal/api"
+	mlog "github.com/quyxishi/whitebox/internal/log"
 )
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {
@@ -20,7 +22,7 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 	// Listen for the interrupt signal.
 	<-ctx.Done()
 
-	log.Println("Shutting down gracefully, press Ctrl+C again to force")
+	slog.Info("Shutting down gracefully, press Ctrl+C again to force")
 	stop() // Allow Ctrl+C to force shutdown
 
 	// The context is used to inform the server it has 5 seconds to finish
@@ -28,16 +30,26 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := apiServer.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown with error: %v", err)
+		slog.Error("Server forced to shutdown", "due", err.Error())
 	}
 
-	log.Println("Server exiting")
+	slog.Info("Server exiting")
 
 	// Notify the main goroutine that the shutdown is complete
 	done <- true
 }
 
 func main() {
+	opts := mlog.ModuleHandlerOptions{
+		SlogOpts: slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	}
+	handler := mlog.NewModuleHandler(os.Stdout, &opts)
+	slog.SetDefault(slog.New(handler))
+
+	// *
+
 	server := api.NewServer()
 
 	// Create a done channel to signal when the shutdown is complete
@@ -53,5 +65,5 @@ func main() {
 
 	// Wait for the graceful shutdown to complete
 	<-done
-	log.Println("Graceful shutdown complete.")
+	slog.Info("Graceful shutdown complete.")
 }
