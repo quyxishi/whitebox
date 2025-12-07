@@ -20,8 +20,8 @@ type ModuleHandler struct {
 
 func (h *ModuleHandler) Handle(ctx context.Context, r slog.Record) error {
 	var atr strings.Builder
-	var iat string = r.Time.Format("2006-01-02 15:04:05.000000")
 	var mod string
+	iat := r.Time.Format("2006-01-02 15:04:05.000000")
 
 	r.Attrs(func(a slog.Attr) bool {
 		if atr.Len() > 0 {
