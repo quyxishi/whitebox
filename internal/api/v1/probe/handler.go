@@ -108,6 +108,11 @@ func (h *ProbeHandler) parseXrayConf(ctx *gin.Context, params *ProbeParams) (out
 }
 
 func (h *ProbeHandler) Probe(ctx *gin.Context) {
+	// todo!
+	//  - duration phase=tunnel metrics
+	//  - sublinks support [raw, json]
+	//  - metrics for sublinks
+
 	params, ok := h.parseProbeParams(ctx)
 	if !ok {
 		return
