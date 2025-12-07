@@ -62,10 +62,29 @@ For example, the output may look like:
 ```md
 # HELP tun_probe_duration_seconds Returns how long the probe took to complete in seconds
 # TYPE tun_probe_duration_seconds gauge
-tun_probe_duration_seconds 0.7377543
+tun_probe_duration_seconds 1.554994
+# HELP tun_probe_http_content_length_bytes Length of HTTP content response in bytes
+# TYPE tun_probe_http_content_length_bytes gauge
+tun_probe_http_content_length_bytes -1
+# HELP tun_probe_http_duration_seconds Duration of HTTP request by phase, summed over all traces
+# TYPE tun_probe_http_duration_seconds gauge
+tun_probe_http_duration_seconds{phase="connect"} 0.1998826
+tun_probe_http_duration_seconds{phase="processing"} 0.3262475
+tun_probe_http_duration_seconds{phase="resolve"} 0
+tun_probe_http_duration_seconds{phase="tls"} 1.2223279
+tun_probe_http_duration_seconds{phase="transfer"} 0.0064185
+# HELP tun_probe_http_redirects The number of redirects
+# TYPE tun_probe_http_redirects gauge
+tun_probe_http_redirects 1
+# HELP tun_probe_http_ssl Indicates if SSL was used for the final trace
+# TYPE tun_probe_http_ssl gauge
+tun_probe_http_ssl 1
 # HELP tun_probe_http_status_code Response HTTP status code
 # TYPE tun_probe_http_status_code gauge
 tun_probe_http_status_code 200
+# HELP tun_probe_http_uncompressed_body_length_bytes Length of uncompressed response body in bytes
+# TYPE tun_probe_http_uncompressed_body_length_bytes gauge
+tun_probe_http_uncompressed_body_length_bytes 17650
 # HELP tun_probe_success Displays whether or not the probe over tunnel was a success
 # TYPE tun_probe_success gauge
 tun_probe_success 1
