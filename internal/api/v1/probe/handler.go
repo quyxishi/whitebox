@@ -134,25 +134,50 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		Help: "Returns how long the probe took to complete in seconds",
 	})
 
+	probeDurationGaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tun_probe_http_duration_seconds",
+		Help: "Duration of HTTP request by phase, summed over all traces",
+	}, []string{"phase"})
+
+	probeContentLengthGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_http_content_length_bytes",
+		Help: "Length of HTTP content response in bytes",
+	})
+
+	probeBodyUncompressedLengthGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_http_uncompressed_body_length_bytes",
+		Help: "Length of uncompressed response body in bytes",
+	})
+
+	probeRedirectsGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_http_redirects",
+		Help: "The number of redirects",
+	})
+
+	probeIsSslGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_http_ssl",
+		Help: "Indicates if SSL was used for the final trace",
+	})
+
 	probeHttpStatusCodeGauge := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "tun_probe_http_status_code",
 		Help: "Response HTTP status code",
 	})
 
+	for _, lv := range []string{"connect", "tls", "processing", "transfer"} {
+		probeDurationGaugeVec.WithLabelValues(lv)
+	}
+
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(probeSuccessGauge)
 	registry.MustRegister(probeDurationGauge)
+	registry.MustRegister(probeDurationGaugeVec)
+	registry.MustRegister(probeContentLengthGauge)
+	registry.MustRegister(probeBodyUncompressedLengthGauge)
+	registry.MustRegister(probeRedirectsGauge)
+	registry.MustRegister(probeIsSslGauge)
 
 	// *
-
-	xrayConf, ok := h.parseXrayConf(ctx, &params)
-	if !ok {
-		return
-	}
-
-	// *
-
-	probe_entry := time.Now()
 
 	instance, err := core.New(xrayConf)
 	if err != nil {
@@ -258,6 +283,81 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 		registry.MustRegister(probeHttpStatusCodeGauge)
 		probeHttpStatusCodeGauge.Set(float64(resp.StatusCode))
+		probeContentLengthGauge.Set(float64(resp.ContentLength))
+
+		if resp.TLS != nil {
+			probeIsSslGauge.Set(float64(1))
+		}
+
+		slog.Info(
+			"probe succeeded",
+			"scheme", params.Scheme,
+			"timeoutMs", params.TimeoutMs,
+			"target", resp.Request.URL,
+			"method", resp.Request.Method,
+			"redirects", redirectCounter.Total,
+			"status", resp.Status,
+			"contentLength", resp.ContentLength,
+			"bodyLength", byteCounter.n,
+		)
+	}
+
+	// *
+
+	probeDurationGauge.Set(probeElapsed)
+	probeSuccessGauge.Set(probeSuccess)
+	probeBodyUncompressedLengthGauge.Set(probeBodyBytes)
+	probeRedirectsGauge.Set(float64(redirectCounter.Total))
+
+	tt.mu.Lock()
+	defer tt.mu.Unlock()
+
+	slog.Info(fmt.Sprintf("a total of %d trace(s) were encountered during probing", len(tt.Traces)))
+
+	for i, trace := range tt.Traces {
+		slog.Debug(
+			"trace:",
+			"roundtrip", i,
+			"init", trace.Init.UnixMilli(),
+			"dnsExit", trace.DnsExit.UnixMilli(),
+			"connectExit", trace.ConnectExit.UnixMilli(),
+			"gotConnect", trace.GotConnect.UnixMilli(),
+			"gotFirstByte", trace.GotFirstByte.UnixMilli(),
+			"tlsEntry", trace.TlsEntry.UnixMilli(),
+			"tlsExit", trace.TlsExit.UnixMilli(),
+			"exit", trace.Exit.UnixMilli(),
+		)
+
+		if i != 0 {
+			probeDurationGaugeVec.WithLabelValues("resolve").Add(trace.DnsExit.Sub(trace.Init).Seconds())
+		}
+
+		// continue here if we never got a connection because a request failed
+		if trace.GotConnect.IsZero() {
+			continue
+		}
+
+		if trace.Tls {
+			probeDurationGaugeVec.WithLabelValues("connect").Add(trace.ConnectExit.Sub(trace.DnsExit).Seconds())
+			probeDurationGaugeVec.WithLabelValues("tls").Add(trace.TlsExit.Sub(trace.TlsEntry).Seconds())
+		} else {
+			probeDurationGaugeVec.WithLabelValues("connect").Add(trace.GotConnect.Sub(trace.DnsExit).Seconds())
+		}
+
+		// continue here if we never got a response from the server
+		if trace.GotFirstByte.IsZero() {
+			continue
+		}
+
+		probeDurationGaugeVec.WithLabelValues("processing").Add(trace.GotFirstByte.Sub(trace.GotConnect).Seconds())
+
+		// continue here if we never read the full response from the server
+		// usually this means that request either failed or was redirected
+		if trace.Exit.IsZero() {
+			continue
+		}
+
+		probeDurationGaugeVec.WithLabelValues("transfer").Add(trace.Exit.Sub(trace.GotFirstByte).Seconds())
 	}
 
 	// *
