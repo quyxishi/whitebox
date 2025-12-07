@@ -171,6 +171,10 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		}
 	}()
 
+	// *
+
+	redirectCounter := RedirectCounter{Max: params.MaxRedirects}
+
 	client := &http.Client{
 		Timeout: time.Duration(params.TimeoutMs) * time.Millisecond,
 		Transport: &http.Transport{
@@ -183,16 +187,48 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 				return core.Dial(ctx, instance, dest)
 			},
 		},
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) > params.MaxRedirects {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		},
+		CheckRedirect: redirectCounter.CheckRedirect,
 	}
 
-	success := 1
-	resp, err := client.Get(params.Target)
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	if err != nil {
+		slog.Error("failed to make cookiejar.Jar", "due", err)
+		ctx.String(http.StatusInternalServerError, "Unable to make cookiejar.Jar due: %s", err.Error())
+		return
+	}
+	client.Jar = jar
+
+	// inject custom transport that tracks traces for each redirect
+	tt := RoundTransport{Transport: client.Transport}
+	client.Transport = &tt
+
+	trace := &httptrace.ClientTrace{
+		DNSStart:             tt.DNSStart,
+		DNSDone:              tt.DNSDone,
+		TLSHandshakeStart:    tt.TLSHandshakeStart,
+		TLSHandshakeDone:     tt.TLSHandshakeDone,
+		ConnectStart:         tt.ConnectStart,
+		ConnectDone:          tt.ConnectDone,
+		GotConn:              tt.GotConn,
+		GotFirstResponseByte: tt.GotFirstResponseByte,
+	}
+
+	req, err := http.NewRequest("GET", params.Target, bytes.NewBuffer([]byte{}))
+	if err != nil {
+		slog.Error("failed to to construct http.Request", "due", err)
+		ctx.String(http.StatusInternalServerError, "Unable to construct http.Request due: %s", err.Error())
+		return
+	}
+
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+
+	// *
+
+	var probeSuccess float64 = 1
+	var probeElapsed float64
+	var probeBodyBytes float64
+
+	resp, err := client.Do(req)
 	if err != nil {
 		probeSuccess = 0
 		slog.Error("probe failed", "due", err)
@@ -203,13 +239,23 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 				slog.Error("failed to close response.Body instance", "due", err)
 			}
 		}()
-	}
 
-	probe_elapsed := time.Since(probe_entry).Seconds()
-	probeDurationGauge.Set(probe_elapsed)
-	probeSuccessGauge.Set(float64(success))
+		byteCounter := &ByteCounter{ReadCloser: resp.Body}
 
-	if resp != nil {
+		_, err = io.Copy(io.Discard, byteCounter)
+		if err != nil {
+			slog.Error("failed to read http response body", "due", err)
+			probeSuccess = 0
+		}
+
+		tt.Actual.Exit = time.Now()
+		probeElapsed = tt.Actual.Exit.Sub(tt.Traces[0].Init).Seconds()
+		probeBodyBytes = float64(byteCounter.n)
+
+		if err := byteCounter.Close(); err != nil {
+			slog.Error("failed to close byteCounter instance", "due", err)
+		}
+
 		registry.MustRegister(probeHttpStatusCodeGauge)
 		probeHttpStatusCodeGauge.Set(float64(resp.StatusCode))
 	}
