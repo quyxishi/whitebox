@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"runtime/debug"
 
@@ -12,7 +12,7 @@ func GlobalErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Printf("[ERROR] %v\n%s\n", err, string(debug.Stack()))
+				slog.Error("unexpected", "error", err, "stackTrace", string(debug.Stack()))
 				c.String(http.StatusInternalServerError, "Unexpected error: %v", err)
 				c.Abort()
 			}
