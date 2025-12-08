@@ -170,7 +170,8 @@ You can configure periodic probes using a simple `curl` command in a cron job or
 - [x] VLESS XHTTP transport protocol support.
 - [x] CI/CD for basic build/test workflow.
 - [x] JSON Subscriptions VPN-url's support.
-- [ ] Whitebox YAML configuration.
+- [ ] Whitebox YAML configuration w/ auto-reload.
+- [ ] AmneziaWG protocol support.
 - [ ] Authorization/OAuth 2.0 support.
 - [ ] Configuration for TLS protocol of HTTP probe support.
 - [ ] Response status/body validation.
