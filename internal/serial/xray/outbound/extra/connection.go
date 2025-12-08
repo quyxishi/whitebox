@@ -11,4 +11,5 @@ type ConnectionExtra struct {
 	Query          url.Values
 	VmessInner     *map[string]any
 	WireguardInner *ini.File
+	AmneziaWGInner *ini.File
 }
