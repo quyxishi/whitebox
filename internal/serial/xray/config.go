@@ -69,11 +69,25 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 		if err != nil {
 			return out, err
 		}
+	case extra.SchemeAmneziaWG:
+		outer, err := base64.StdEncoding.DecodeString(url.Hostname())
+		if err != nil {
+			return out, err
+		}
+
+		con.AmneziaWGInner, err = ini.Load(outer)
+		if err != nil {
+			return out, err
+		}
 	}
 
 	conProtocol := url.Scheme
 	if conProtocol == extra.SchemeShadowsocks {
 		conProtocol = "shadowsocks"
+	}
+	// AmneziaWG uses "amneziawg" as protocol name in xray-core (amnezia fork)
+	if conProtocol == extra.SchemeAmneziaWG {
+		conProtocol = "amneziawg"
 	}
 
 	outboundConfig := outbound.OutboundConfig{
@@ -96,6 +110,8 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 		protocolOutbound, err = protocol.ParseShadowsocksOutbound(&con)
 	case extra.SchemeWireguard:
 		protocolOutbound = protocol.ParseWireguardOutbound(&con)
+	case extra.SchemeAmneziaWG:
+		protocolOutbound = protocol.ParseAmneziaWGOutbound(&con)
 	default:
 		slog.Error("unexpected", "schema", url.Scheme)
 		return "", fmt.Errorf("unexpected schema: %s", url.Scheme)
