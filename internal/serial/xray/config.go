@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/url"
 
 	"github.com/quyxishi/whitebox/internal/serial/xray/outbound"
@@ -97,7 +96,6 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 	case extra.SchemeWireguard:
 		protocolOutbound = protocol.ParseWireguardOutbound(&con)
 	default:
-		slog.Error("unexpected", "schema", url.Scheme)
 		return "", fmt.Errorf("unexpected schema: %s", url.Scheme)
 	}
 
