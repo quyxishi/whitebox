@@ -8,14 +8,16 @@
     # And then, update relabel_configs in prometheus.yml job's config:
     #   - source_labels: [sni]
     #     target_label: sni
-- targets: [ "https://x.com" ]
-  labels:
-    ctx: "vless://e8d12cd5-b436-4ed1-967c-7001efe6cf06@1.2.3.4:443?type=tcp&encryption=none&security=reality&pbk=DF-3KL2W4RuNB2HgsEDmLqHLvvTTN4_QfwUCUn8Uhy0&fp=firefox&sni=web.max.ru&sid=dc8wq0b47450f9&spx=%2F&flow=xtls-rprx-vision#gate-raii-idx0"
-    client: "gate-raii-idx0"
-    protocol: "vless"
 - targets: [ "https://cloudflare.com" ]
   labels:
     # Wireguard connection must be supplied as: base64-encoded peer .ini config prefixed with 'wireguard://'
     ctx: "wireguard://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IFNObk5ON0l4YzV0ekNYS2FJNGZXNnEyOFYzbnhGS2YxcmNoYWt4bWdBbHM9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCAxLjAuMC4xCk1UVSA9IDE0MjAKCiMgLTEKW1BlZXJdClB1YmxpY0tleSA9IHk2MTdkQ2dNM1g2bEtEanBkdDVhQ3dIWmROWW5OT0FwMFMyanFUbGpmZzA9CkFsbG93ZWRJUHMgPSAwLjAuMC4wLzAsIDo6LzAKRW5kcG9pbnQgPSAxLjIuMy40OjQ0Mw=="
     client: "wg-raii-idx0"
     protocol: "wireguard"
+- targets: [ "https://google.com" ]
+  labels:
+    # AmneziaWG connection with obfuscation parameters (Jc, Jmin, Jmax, S1, S2, H1-H4)
+    # Must be supplied as: base64-encoded peer .ini config prefixed with 'awg://'
+    ctx: "awg://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IFNObk5ON0l4YzN0emxYS2FJNGY4NnEyOFYzbnhGS2YzcmNoYWt4bWdCbHM9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCAxLjAuMC4xCk1UVSA9IDE0MjAKSmMgPSAzCkptaW4gPSA1MApKbWF4ID0gMTAwMApTMSA9IDIwClMyID0gNzgKSDEgPSAzOTEzMTI3OApIMiA9IDgzMjEzODE4NQpIMyA9IDE0MzY5NTc4NTcKSDQgPSAxNjM1ODc3NzQ2CgpbUGVlcl0KUHVibGljS2V5ID0geTYxN2RDZ00zWDZsS0RqcGR0NWFHY0FaZE5Zbk5PQXAwUzNqYVRsamZnMD0KQWxsb3dlZElQcyA9IDAuMC4wLjAvMCwgOjovMApFbmRwb2ludCA9IDEuMi4zLjQ6Mjc3ODkK"
+    client: "awg-raii-idx0"
+    protocol: "amneziawg"

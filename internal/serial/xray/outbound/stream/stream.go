@@ -65,6 +65,8 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 		query = mid
 	case extra.SchemeWireguard:
 		return StreamConfig{}, nil
+	case extra.SchemeAmneziaWG:
+		return StreamConfig{}, nil
 	}
 
 	out = StreamConfig{

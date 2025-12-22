@@ -22,16 +22,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	_ "github.com/xtls/xray-core/app/dispatcher"
-	_ "github.com/xtls/xray-core/app/dns"
-	_ "github.com/xtls/xray-core/app/proxyman/inbound"
-	_ "github.com/xtls/xray-core/app/proxyman/outbound"
-	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/core"
-	_ "github.com/xtls/xray-core/main/json"
-	_ "github.com/xtls/xray-core/proxy/vless/outbound"
-	_ "github.com/xtls/xray-core/transport/internet/reality"
-	_ "github.com/xtls/xray-core/transport/internet/tcp"
+	_ "github.com/amnezia-vpn/amnezia-xray-core/app/dispatcher"
+	_ "github.com/amnezia-vpn/amnezia-xray-core/app/proxyman/inbound"
+	_ "github.com/amnezia-vpn/amnezia-xray-core/app/proxyman/outbound"
+	"github.com/amnezia-vpn/amnezia-xray-core/common/net"
+	"github.com/amnezia-vpn/amnezia-xray-core/core"
+	_ "github.com/amnezia-vpn/amnezia-xray-core/main/json"
+	_ "github.com/amnezia-vpn/amnezia-xray-core/proxy/blackhole"
+	_ "github.com/amnezia-vpn/amnezia-xray-core/proxy/freedom"
+	_ "github.com/amnezia-vpn/amnezia-xray-core/proxy/wireguard"
 )
 
 type ProbeHandler struct{}
