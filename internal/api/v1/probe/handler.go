@@ -91,7 +91,7 @@ func (h *ProbeHandler) parseXrayConf(ctx *gin.Context, params *ProbeParams) (out
 
 	out, err = core.LoadConfig("json", bytes.NewReader([]byte(config)))
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, "Unable to load xray config: %s", err.Error())
+		ctx.String(http.StatusInternalServerError, "Unable to load xray config: %v", err)
 		return out, false
 	}
 
@@ -103,6 +103,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	//  - duration phase=tunnel metrics
 	//  - sublinks support [raw, json]
 	//  - metrics for sublinks
+	//  - H3/QUIC support
 
 	params, ok := h.parseProbeParams(ctx)
 	if !ok {
@@ -182,18 +183,18 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	instance, err := core.New(xrayConf)
 	if err != nil {
-		slog.Error("failed to init xray instance", "due", err)
+		slog.Error("failed to init xray instance", "err", err)
 		ctx.String(http.StatusInternalServerError, "Unable to init xray instance: %s", err.Error())
 		return
 	}
 	if err := instance.Start(); err != nil {
-		slog.Error("failed to start xray instance", "due", err)
+		slog.Error("failed to start xray instance", "err", err)
 		ctx.String(http.StatusInternalServerError, "Unable to start xray instance: %s", err.Error())
 		return
 	}
 	defer func() {
 		if err := instance.Close(); err != nil {
-			slog.Error("failed to close xray instance", "due", err)
+			slog.Error("failed to close xray instance", "err", err)
 		}
 	}()
 
@@ -218,8 +219,8 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
-		slog.Error("failed to make cookiejar.Jar", "due", err)
-		ctx.String(http.StatusInternalServerError, "Unable to make cookiejar.Jar due: %s", err.Error())
+		slog.Error("failed to make cookiejar.Jar", "err", err)
+		ctx.String(http.StatusInternalServerError, "Unable to make cookiejar.Jar due: %v", err)
 		return
 	}
 	client.Jar = jar
@@ -241,8 +242,8 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	req, err := http.NewRequest("GET", params.Target, bytes.NewBuffer([]byte{}))
 	if err != nil {
-		slog.Error("failed to to construct http.Request", "due", err)
-		ctx.String(http.StatusInternalServerError, "Unable to construct http.Request due: %s", err.Error())
+		slog.Error("failed to to construct http.Request", "err", err)
+		ctx.String(http.StatusInternalServerError, "Unable to construct http.Request due: %v", err)
 		return
 	}
 
@@ -257,12 +258,12 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	resp, err := client.Do(req)
 	if err != nil {
 		probeSuccess = 0
-		slog.Error("probe failed", "due", err)
+		slog.Error("probe failed", "err", err)
 	}
 	if resp != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				slog.Error("failed to close response.Body instance", "due", err)
+				slog.Error("failed to close response.Body instance", "err", err)
 			}
 		}()
 
@@ -270,7 +271,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 		_, err = io.Copy(io.Discard, byteCounter)
 		if err != nil {
-			slog.Error("failed to read http response body", "due", err)
+			slog.Error("failed to read http response body", "err", err)
 			probeSuccess = 0
 		}
 
@@ -279,7 +280,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		probeBodyBytes = float64(byteCounter.n)
 
 		if err := byteCounter.Close(); err != nil {
-			slog.Error("failed to close byteCounter instance", "due", err)
+			slog.Error("failed to close byteCounter instance", "err", err)
 		}
 
 		registry.MustRegister(probeHttpStatusCodeGauge)
