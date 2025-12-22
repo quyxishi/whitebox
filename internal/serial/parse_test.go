@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/quyxishi/whitebox/internal/serial"
-	"github.com/xtls/xray-core/core"
+	"github.com/amnezia-vpn/amnezia-xray-core/core"
 )
 
 const (

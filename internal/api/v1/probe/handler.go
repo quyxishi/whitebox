@@ -15,23 +15,14 @@ import (
 	"time"
 
 	"github.com/quyxishi/whitebox/internal/serial"
+	"github.com/amnezia-vpn/amnezia-xray-core/common/net"
+	"github.com/amnezia-vpn/amnezia-xray-core/core"
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gvcgo/vpnparser/pkgs/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	_ "github.com/xtls/xray-core/app/dispatcher"
-	_ "github.com/xtls/xray-core/app/dns"
-	_ "github.com/xtls/xray-core/app/proxyman/inbound"
-	_ "github.com/xtls/xray-core/app/proxyman/outbound"
-	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/core"
-	_ "github.com/xtls/xray-core/main/json"
-	_ "github.com/xtls/xray-core/proxy/vless/outbound"
-	_ "github.com/xtls/xray-core/transport/internet/reality"
-	_ "github.com/xtls/xray-core/transport/internet/tcp"
 )
 
 type ProbeHandler struct{}

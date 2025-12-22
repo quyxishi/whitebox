@@ -13,7 +13,7 @@ import (
 	"github.com/gogf/gf/v2/encoding/gjson"
 	"github.com/quyxishi/whitebox/internal/serial/xray"
 
-	_ "github.com/xtls/xray-core/main/json"
+	_ "github.com/amnezia-vpn/amnezia-xray-core/main/json"
 )
 
 type BackendType int
