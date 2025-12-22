@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-    <code>whitebox</code> for <a href="https://prometheus.io/" target="_blank">Prometheus</a> provides availability monitoring of external VPN services powered by VMESS, VLESS, TROJAN, WG and SS.
+    <code>whitebox</code> for <a href="https://prometheus.io/" target="_blank">Prometheus</a> provides availability monitoring of external VPN services powered by VMESS, VLESS, TROJAN, WG, AWG and SS.
 </p>
 
 <div align="center">
@@ -15,7 +15,7 @@
 
 The features that distinguish whitebox:
 
-- **Multi-protocol VPN Probing**: Supports probing of external VPN services including VMESS, VLESS, Trojan, Wireguard and Shadowsocks.
+- **Multi-protocol VPN Probing**: Supports probing of external VPN services including VMESS, VLESS, Trojan, Wireguard, AmneziaWG and Shadowsocks.
 - **RESTful API Service**: Exposes HTTP endpoints for on-demand or scheduled connectivity checks.
 - **Custom Probe Configuration**: Accepts probe parameters such as connection details, target URLs, max redirects, and configurable timeouts.
 - **Prometheus Metrics Integration**: Exposes key probe results as Prometheus metrics.
