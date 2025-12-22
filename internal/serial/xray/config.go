@@ -81,12 +81,12 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 	}
 
 	conProtocol := url.Scheme
-	if conProtocol == extra.SchemeShadowsocks {
+	switch conProtocol {
+	case extra.SchemeShadowsocks:
 		conProtocol = "shadowsocks"
-	}
 	// AmneziaWG uses "wireguard" as protocol name in xray-core (amnezia fork)
 	// The obfuscation parameters (Jc, Jmin, etc.) are part of the wireguard settings
-	if conProtocol == extra.SchemeAmneziaWG {
+	case extra.SchemeAmneziaWG:
 		conProtocol = "wireguard"
 	}
 

@@ -58,13 +58,13 @@ AmneziaWG JSON config for xray-core (amnezia fork):
 // AmneziaWGOutbound represents AmneziaWG protocol configuration for xray-core
 // This extends WireGuard with obfuscation parameters (Jc, Jmin, Jmax, S1, S2, H1-H4)
 type AmneziaWGOutbound struct {
-	SecretKey      string            `json:"secretKey,omitempty"`
-	Address        []string          `json:"address,omitempty"`
-	Peers          []*AmneziaWGPeer  `json:"peers,omitempty"`
-	NoKernelTun    bool              `json:"noKernelTun,omitempty"`
-	MTU            int               `json:"mtu,omitempty"`
-	Workers        int               `json:"workers,omitempty"`
-	DomainStrategy string            `json:"domainStrategy,omitempty"`
+	SecretKey      string           `json:"secretKey,omitempty"`
+	Address        []string         `json:"address,omitempty"`
+	Peers          []*AmneziaWGPeer `json:"peers,omitempty"`
+	NoKernelTun    bool             `json:"noKernelTun,omitempty"`
+	MTU            int              `json:"mtu,omitempty"`
+	Workers        int              `json:"workers,omitempty"`
+	DomainStrategy string           `json:"domainStrategy,omitempty"`
 
 	// AmneziaWG obfuscation parameters
 	// Jc - number of junk packets before handshake (0-128)

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/quyxishi/whitebox/internal/serial"
 	"github.com/amnezia-vpn/amnezia-xray-core/core"
+	"github.com/quyxishi/whitebox/internal/serial"
 )
 
 const (
@@ -172,6 +172,7 @@ func TestParseURI_Wireguard(t *testing.T) {
 }
 
 // -- AMNEZIAWG
+
 func TestParseURI_AmneziaWG(t *testing.T) {
 	xrayParseAndLoad(t, URI_AMNEZIAWG)
 }
