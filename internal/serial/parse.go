@@ -40,13 +40,13 @@ func ParseURI(backend BackendType, uri string, params *ParseParams) (out string,
 
 		url, err := url.Parse(uri)
 		if err != nil {
-			slog.Error("unable to parse uri-based config as url.URL structure", "due", err)
+			slog.Error("unable to parse uri-based config as url.URL structure", "err", err)
 			return "", err
 		}
 
 		out, err = xrayConfig.Parse(url)
 		if err != nil {
-			slog.Error("unable to parse uri-based config for xray-core", "due", err)
+			slog.Error("unable to parse uri-based config for xray-core", "err", err)
 			return "", err
 		}
 	case CONFIG_BACKEND_SINGBOX:
@@ -72,7 +72,7 @@ func ParseSubscriptionURI(json_sub_uri string, params *ParseSubParams) (out stri
 	if resp != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				slog.Error("failed to close response.body instance", "due", err)
+				slog.Error("failed to close response.body instance", "err", err)
 			}
 		}()
 	}
