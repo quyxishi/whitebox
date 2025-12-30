@@ -9,6 +9,8 @@ import (
 	"github.com/ghodss/yaml"
 )
 
+const DefaultScopeName string = "default"
+
 type FailIfModule string
 
 const (
@@ -27,6 +29,12 @@ const (
 
 type WhiteboxConfig struct {
 	Scopes map[string]ScopeRecord `yaml:"scopes,omitempty"`
+}
+
+func NewWhiteboxConfig() WhiteboxConfig {
+	return WhiteboxConfig{
+		Scopes: map[string]ScopeRecord{DefaultScopeName: NewScopeRecord()},
+	}
 }
 
 // Load reads a YAML file from the given path and returns the parsed configuration
@@ -50,6 +58,10 @@ func Load(path string) (*WhiteboxConfig, error) {
 		}
 	}
 
+	if _, ok := config.Scopes[DefaultScopeName]; !ok {
+		config.Scopes[DefaultScopeName] = NewScopeRecord()
+	}
+
 	return &config, nil
 }
 
@@ -57,6 +69,13 @@ type ScopeRecord struct {
 	// Fallbacks to 5s by default
 	Timeout time.Duration `yaml:"timeout,omitempty"`
 	Http    HttpRecord    `yaml:"http,omitempty"`
+}
+
+func NewScopeRecord() ScopeRecord {
+	return ScopeRecord{
+		Timeout: 5 * time.Second,
+		Http:    NewHttpRecord(),
+	}
 }
 
 // Validate ensures the scope configuration semantic correctness
@@ -90,6 +109,14 @@ type HttpRecord struct {
 
 	// Response validation constraints
 	FailIf []FailIfRecord `yaml:"fail_if,omitempty"`
+}
+
+func NewHttpRecord() HttpRecord {
+	return HttpRecord{
+		MaxRedirects: 5,
+		Method:       "GET",
+		Headers:      make(map[string]string),
+	}
 }
 
 type FailIfRecord struct {
