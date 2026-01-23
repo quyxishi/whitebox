@@ -23,7 +23,7 @@ const (
 	// Expecting `name:value_regexp` as `Val`
 	FailIf_HeaderMatchesRegexp FailIfModule = "header_matches_regexp"
 
-	// Expecting a string of response status codes separated by comma as `Val`
+	// Expecting a string of response status codes separated by comma as `Val` (e.g., "200,301-399,500")
 	FailIf_StatusCodeMatches FailIfModule = "status_code_matches"
 )
 
@@ -51,12 +51,14 @@ func Load(path string) (*WhiteboxConfig, error) {
 		return nil, err
 	}
 
-	for _, scope := range config.Scopes {
+	for name, scope := range config.Scopes {
 		if err := scope.Validate(); err != nil {
-			slog.Error("whitebox scope configuration is invalid", "err", err)
+			slog.Error("whitebox scope configuration is invalid", "name", name, "err", err)
 			return nil, fmt.Errorf("invalid scope configuration: %w", err)
 		}
 	}
+
+	// todo! cover case when scope doesn't have http declared
 
 	if _, ok := config.Scopes[DefaultScopeName]; !ok {
 		config.Scopes[DefaultScopeName] = NewScopeRecord()

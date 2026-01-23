@@ -24,7 +24,7 @@ func (srv *Server) RegisterRoutes() http.Handler {
 		AllowCredentials: true,
 	}))
 
-	probe.RegisterRoutes(&r.RouterGroup, probe.NewProbeHandler())
+	probe.RegisterRoutes(&r.RouterGroup, probe.NewProbeHandler(srv.configWrapper))
 	r.NoRoute(v1.NotFoundHandler())
 
 	return r
