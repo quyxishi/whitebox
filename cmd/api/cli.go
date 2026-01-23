@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/alecthomas/kong"
@@ -25,7 +26,11 @@ func (h *CLI) LoadConfig() (*config.WhiteboxConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			slog.Error("failed to close file instance", "err", err)
+		}
+	}()
 
 	var config config.WhiteboxConfig
 	if err := yaml.NewDecoder(file).Decode(&config); err != nil {
