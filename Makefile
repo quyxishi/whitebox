@@ -3,11 +3,12 @@ all: build test
 # Build the application
 build:
 	@echo -- Building
-	@go build -o main.exe cmd/api/main.go
+	@go build -o whitebox.exe ./cmd/api
 
 # Run the application
 run:
-	@go run cmd/api/main.go
+	@echo -- Running
+	@go run ./cmd/api $(filter-out run,$(MAKECMDGOALS))
 
 # Test the application
 test:
@@ -17,7 +18,7 @@ test:
 # Clean the binary
 clean:
 	@echo -- Cleaning
-	@rm -f main
+	@rm -f whitebox
 
 # Live-Reload
 watch:
@@ -32,3 +33,6 @@ watch:
 	}"
 
 .PHONY: all build run test clean watch
+
+%:
+	@:

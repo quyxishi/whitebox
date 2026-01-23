@@ -173,11 +173,11 @@ You can configure periodic probes using a simple `curl` command in a cron job or
 - [x] CI/CD for basic build/test workflow.
 - [x] JSON Subscriptions VPN-url's support.
 - [x] AmneziaWG protocol support.
-- [ ] Whitebox YAML configuration w/ auto-reload.
+- [x] Whitebox YAML configuration w/ auto-reload by SIGHUP.
+- [x] Response status/body validation.
+- [x] Custom HTTP-headers qualify support.
 - [ ] Authorization/OAuth 2.0 support.
 - [ ] Configuration for TLS protocol of HTTP probe support.
-- [ ] Response status/body validation.
-- [ ] Custom HTTP-headers qualify support.
 - [ ] More advanced metrics.
 
 ## Development

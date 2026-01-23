@@ -1,0 +1,67 @@
+# Whitebox Configuration
+# ========================
+#
+# This YAML file configures monitoring scopes for external VPN services.
+# Each scope defines an HTTP probe with validation rules.
+
+scopes:
+  # Default monitoring scope (fallback)
+  default:
+    timeout: 5s
+
+    http:
+      max_redirects: 5
+      method: GET
+
+      # Custom request headers
+      headers:
+        User-Agent: "Whitebox/0.4.0"
+        Accept: "text/plain,*/*"
+
+      # Request body (mutually exclusive with body_file)
+      # body: '{"status": "alive"}'
+
+      # File containing request body
+      # body_file: "./request-payload.json"
+
+      # Response validation rules
+      fail_if:
+        # Fail if SSL/TLS handshake is performed
+        - mod: ssl
+
+        # Fail if HTTP status is NOT 200
+        - mod: status_code_matches
+          val: "200"
+          inv: true
+
+        # Fail if response body does NOT contain "alive" or "healthy"
+        - mod: body_matches_regexp
+          val: "alive|healthy"
+          inv: true
+
+        # Fail if JSON response.status != "ok" (CEL expression)
+        - mod: body_json_matches_cel
+          val: 'response.status == "ok"'
+          inv: true
+
+        # Fail if "Server" header does NOT match nginx/apache patterns
+        - mod: header_matches_regexp
+          val: "Server:\\s?nginx|Server:\\s?apache"
+          inv: true
+
+  # Example ping scope
+  ping:
+    timeout: 10s
+    http:
+      method: POST
+      headers:
+        Authorization: "Bearer dXNlcjpwYXNz"
+        Content-Type: "application/json"
+      body: '{"ping": true}'
+      fail_if:
+        - mod: status_code_matches
+          val: "200,201"
+          inv: true
+        - mod: body_matches_regexp
+          val: '"status":\s?"ok"'
+          inv: true

@@ -6,15 +6,18 @@ import (
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/quyxishi/whitebox/internal/config"
 )
 
 type Server struct {
-	port int
+	port          int
+	configWrapper *config.WhiteboxConfigWrapper
 }
 
-func NewServer() *http.Server {
+func NewServer(wrapper *config.WhiteboxConfigWrapper) *http.Server {
 	inner := &Server{
-		port: 9116,
+		port:          9116,
+		configWrapper: wrapper,
 	}
 
 	server := &http.Server{

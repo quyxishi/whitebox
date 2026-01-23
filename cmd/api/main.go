@@ -10,7 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kong"
+	"github.com/quyxishi/whitebox"
 	"github.com/quyxishi/whitebox/internal/api"
+	"github.com/quyxishi/whitebox/internal/config"
 	mlog "github.com/quyxishi/whitebox/internal/log"
 )
 
@@ -39,7 +42,48 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 	done <- true
 }
 
+func hotReloadLoop(cli *CLI, configWrapper *config.WhiteboxConfigWrapper) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGHUP)
+
+	for {
+		<-sigs // Listen for the sighup signal.
+		slog.Info("SIGHUP received, reloading config")
+
+		newConfig, err := cli.LoadConfig()
+		if err != nil {
+			slog.Error("Unable to reload config file", "err", err)
+			continue
+		}
+
+		configWrapper.Update(newConfig)
+		slog.Info("Config updated successfully")
+	}
+}
+
 func main() {
+	var cli CLI
+
+	parser := kong.Must(&cli,
+		kong.Name("whitebox"),
+		kong.Description("A Prometheus exporter that provides availability monitoring of external VPN services"),
+		kong.Vars{
+			"version": whitebox.Version(),
+		},
+	)
+
+	_, err := parser.Parse(os.Args[1:])
+	if err != nil {
+		parser.FatalIfErrorf(fmt.Errorf("unable to parse cli args due: %w", err))
+	}
+
+	cfg, err := cli.LoadConfig()
+	if err != nil {
+		parser.FatalIfErrorf(fmt.Errorf("unable to load config file due: %w", err))
+	}
+
+	wrapper := config.NewConfigWrapper(cfg)
+
 	// Initialize the default structured logger writing to stdout
 	// This configuration is flexible and can be adapted - e.g, by switching to JSON -
 	// to ensure compatibility with log ingestion and aggregation systems.
@@ -51,17 +95,24 @@ func main() {
 	handler := mlog.NewModuleHandler(os.Stdout, &opts)
 	slog.SetDefault(slog.New(handler))
 
+	if cli.ConfigPath == "" {
+		slog.Info("using default configuration (no config path provided)")
+	} else {
+		slog.Info("using configuration file w/", slog.Int("scopes", len(cfg.Scopes)), slog.String("path", cli.ConfigPath))
+	}
+
 	// *
 
-	server := api.NewServer()
+	server := api.NewServer(wrapper)
 
 	// Create a done channel to signal when the shutdown is complete.
 	done := make(chan bool, 1)
 
 	// Run graceful shutdown in a separate goroutine.
 	go gracefulShutdown(server, done)
+	go hotReloadLoop(&cli, wrapper)
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		panic(fmt.Sprintf("http server error: %s", err))
 	}
