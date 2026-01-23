@@ -4,16 +4,23 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptrace"
+	"net/textproto"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/cel-go/cel"
+	"github.com/quyxishi/whitebox"
+	"github.com/quyxishi/whitebox/internal/config"
 	"github.com/quyxishi/whitebox/internal/serial"
 	"golang.org/x/net/publicsuffix"
 
@@ -33,21 +40,130 @@ import (
 	_ "github.com/amnezia-vpn/amnezia-xray-core/proxy/wireguard"
 )
 
-type ProbeHandler struct{}
+func matchRegularExpression(body []byte, predicate string) (bool, error) {
+	regex, err := regexp.Compile(predicate)
+	if err != nil {
+		return false, fmt.Errorf("failed to compile regex:%s due: %w", predicate, err)
+	}
 
-func NewProbeHandler() *ProbeHandler {
-	return &ProbeHandler{}
+	return regex.Match(body), nil
+}
+
+func newCELExpression(predicate string) (*cel.Program, error) {
+	env, err := cel.NewEnv(
+		cel.Variable("body", cel.DynType),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct CEL environment due: %w", err)
+	}
+
+	ast, issues := env.Compile(predicate)
+	if issues != nil && issues.Err() != nil {
+		return nil, fmt.Errorf("failed to compile CEL:%s due: %w", predicate, issues.Err())
+	}
+
+	celExpr, err := env.Program(ast, cel.InterruptCheckFrequency(100))
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct CEL:%s due: %w", predicate, err)
+	}
+
+	return &celExpr, nil
+}
+
+func matchCELExpression(ctx context.Context, body []byte, predicate string) (bool, error) {
+	var bodyJSON any
+	if err := json.Unmarshal(body, &bodyJSON); err != nil {
+		return false, fmt.Errorf("failed to unmarshall http body to json due: %w", err)
+	}
+
+	evalPayload := map[string]any{
+		"body": bodyJSON,
+	}
+
+	celExpr, err := newCELExpression(predicate)
+	if err != nil {
+		return false, fmt.Errorf("unable to perform CEL validation due: %w", err)
+	}
+
+	result, details, err := (*celExpr).ContextEval(ctx, evalPayload)
+	if err != nil {
+		return false, fmt.Errorf("failed to evaluate CEL:%s due: %w", predicate, err)
+	}
+	if result.Type() != cel.BoolType {
+		return false, fmt.Errorf("on CEL:%s evaluation result is not a boolean, details: %v", predicate, details)
+	}
+
+	return result.Value().(bool), nil
+}
+
+func matchRegularExpressionsOnHeaders(headers http.Header, key string, predicate string) (bool, error) {
+	values := headers[textproto.CanonicalMIMEHeaderKey(key)]
+	if len(values) == 0 {
+		// currently, blindly treating missing header as validation fail
+		return false, nil
+	}
+
+	regex, err := regexp.Compile(predicate)
+	if err != nil {
+		return false, fmt.Errorf("failed to compile regex:%s due: %w", predicate, err)
+	}
+
+	for _, v := range values {
+		if !regex.MatchString(v) {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func matchStatusCodes(actual int, expecting []string) bool {
+	matched := false
+
+	for _, codeStr := range expecting {
+		codeStr = strings.TrimSpace(codeStr)
+		if strings.Contains(codeStr, "-") {
+			// range match: "300-399"
+			bounds := strings.Split(codeStr, "-")
+			if len(bounds) == 2 {
+				min, _ := strconv.Atoi(strings.TrimSpace(bounds[0]))
+				max, _ := strconv.Atoi(strings.TrimSpace(bounds[1]))
+				if actual >= min && actual <= max {
+					matched = true
+					break
+				}
+			}
+		} else {
+			// exact match: "200,404"
+			code, _ := strconv.Atoi(codeStr)
+			if actual == code {
+				matched = true
+				break
+			}
+		}
+	}
+
+	return matched
+}
+
+type ProbeHandler struct {
+	configWrapper *config.WhiteboxConfigWrapper
+}
+
+func NewProbeHandler(wrapper *config.WhiteboxConfigWrapper) *ProbeHandler {
+	return &ProbeHandler{
+		configWrapper: wrapper,
+	}
 }
 
 type ProbeParams struct {
-	Connection   string
-	Scheme       string
-	Target       string
-	MaxRedirects int
-	TimeoutMs    int
+	Connection string
+	Scheme     string
+	Target     string
+	Scope      string
 }
 
-func (h *ProbeHandler) parseProbeParams(ctx *gin.Context) (out ProbeParams, ok bool) {
+func (h *ProbeHandler) parseProbeParams(ctx *gin.Context, cfg *config.WhiteboxConfig) (out ProbeParams, ok bool) {
 	out.Connection, ok = ctx.GetQuery("ctx")
 	if !ok {
 		ctx.String(http.StatusBadRequest, "VPN connection query-param 'ctx' is missing")
@@ -67,14 +183,10 @@ func (h *ProbeHandler) parseProbeParams(ctx *gin.Context) (out ProbeParams, ok b
 
 	out.Target = target
 
-	out.MaxRedirects = 5
-	if v, err := strconv.Atoi(ctx.Query("max_redirects")); err == nil {
-		out.MaxRedirects = v
-	}
-
-	out.TimeoutMs = 5000
-	if v, err := strconv.Atoi(ctx.Query("timeout_ms")); err == nil {
-		out.TimeoutMs = v
+	out.Scope = ctx.DefaultQuery("scope", config.DefaultScopeName)
+	if _, ok = cfg.Scopes[out.Scope]; !ok {
+		ctx.String(http.StatusBadRequest, fmt.Sprintf("Scope '%s' does not exists in configuration", out.Scope))
+		return
 	}
 
 	return out, true
@@ -113,7 +225,8 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	//  - metrics for sublinks
 	//  - H3/QUIC support
 
-	params, ok := h.parseProbeParams(ctx)
+	cfg := h.configWrapper.Get()
+	params, ok := h.parseProbeParams(ctx, cfg)
 	if !ok {
 		return
 	}
@@ -123,13 +236,16 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		return
 	}
 
+	scope := cfg.Scopes[params.Scope]
+
 	slog.Info(
 		"recv probe w/",
 		"scheme", params.Scheme,
 		"target", params.Target,
-		"method", "GET",
-		"maxRedirects", params.MaxRedirects,
-		"timeoutMs", params.TimeoutMs,
+		"scope", params.Scope,
+		"timeout", scope.Timeout,
+		"http.method", scope.Http.Method,
+		"http.maxRedirects", scope.Http.MaxRedirects,
 	)
 
 	// *
@@ -178,6 +294,39 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		probeDurationGaugeVec.WithLabelValues(lv)
 	}
 
+	probeFailedDueToSSL := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_failed_due_to_ssl",
+		Help: "Indicates if probe failed due to ssl",
+	})
+
+	probeFailedDueToRegexBody := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_failed_due_to_regex_body",
+		Help: "Indicates if probe failed due to regex on body",
+	})
+
+	probeFailedDueToRegexHeader := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_failed_due_to_regex_header",
+		Help: "Indicates if probe failed due to regex on header",
+	})
+
+	probeFailedDueToCEL := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_failed_due_to_cel",
+		Help: "Indicates if probe failed due to CEL expression",
+	})
+
+	probeFailedDueToStatusCode := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_failed_due_to_status",
+		Help: "Indicates if probe failed due to status code",
+	})
+
+	failIfMetrics := map[config.FailIfModule]prometheus.Gauge{
+		config.FailIf_SSL:                 probeFailedDueToSSL,
+		config.FailIf_BodyMatchesRegexp:   probeFailedDueToRegexBody,
+		config.FailIf_HeaderMatchesRegexp: probeFailedDueToRegexHeader,
+		config.FailIf_BodyJsonMatchesCEL:  probeFailedDueToCEL,
+		config.FailIf_StatusCodeMatches:   probeFailedDueToStatusCode,
+	}
+
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(probeSuccessGauge)
 	registry.MustRegister(probeDurationGauge)
@@ -186,6 +335,19 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	registry.MustRegister(probeBodyUncompressedLengthGauge)
 	registry.MustRegister(probeRedirectsGauge)
 	registry.MustRegister(probeIsSslGauge)
+
+	// *
+
+	failIfBody := false
+	for _, v := range scope.Http.FailIf {
+		if !failIfBody && strings.HasPrefix(string(v.Mod), "body") {
+			failIfBody = true
+		}
+
+		if metric, exists := failIfMetrics[v.Mod]; exists {
+			registry.MustRegister(metric)
+		}
+	}
 
 	// *
 
@@ -208,10 +370,10 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	// *
 
-	redirectCounter := RedirectCounter{Max: params.MaxRedirects}
+	redirectCounter := RedirectCounter{Max: scope.Http.MaxRedirects}
 
 	client := &http.Client{
-		Timeout: time.Duration(params.TimeoutMs) * time.Millisecond,
+		Timeout: scope.Timeout,
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				dest, err := net.ParseDestination(network + ":" + addr)
@@ -248,11 +410,36 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		GotFirstResponseByte: tt.GotFirstResponseByte,
 	}
 
-	req, err := http.NewRequest("GET", params.Target, bytes.NewBuffer([]byte{}))
+	var body io.Reader
+
+	if scope.Http.BodyFile != "" {
+		fileData, err := os.ReadFile(scope.Http.BodyFile)
+		if err != nil {
+			slog.Error("failed to read body file", "path", scope.Http.BodyFile, "err", err)
+			ctx.String(http.StatusInternalServerError, "Unable to read body file due: %v", err)
+			return
+		}
+
+		body = bytes.NewReader(fileData)
+	} else if scope.Http.Body != "" {
+		body = strings.NewReader(scope.Http.Body)
+	} else {
+		body = bytes.NewBuffer([]byte{})
+	}
+
+	req, err := http.NewRequest(scope.Http.Method, params.Target, body)
 	if err != nil {
 		slog.Error("failed to to construct http.Request", "err", err)
 		ctx.String(http.StatusInternalServerError, "Unable to construct http.Request due: %v", err)
 		return
+	}
+
+	req.Header.Set("user-agent", fmt.Sprintf("whitebox/%s", whitebox.Version()))
+	req.Header.Set("accept", "*/*")
+
+	// non-canonical header keys assignment
+	for k, v := range scope.Http.Headers {
+		req.Header[k] = []string{v}
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
@@ -277,10 +464,77 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 		byteCounter := &ByteCounter{ReadCloser: resp.Body}
 
-		_, err = io.Copy(io.Discard, byteCounter)
-		if err != nil {
-			slog.Error("failed to read http response body", "err", err)
-			probeSuccess = 0
+		var body []byte
+		if failIfBody {
+			body, err = io.ReadAll(byteCounter)
+			if err != nil {
+				slog.Error("failed to read http response body for validation", "err", err)
+				probeSuccess = 0
+			}
+		}
+
+		for i, failIf := range scope.Http.FailIf {
+			var matched bool
+			switch failIf.Mod {
+			case config.FailIf_SSL:
+				matched = (resp.TLS != nil)
+				slog.Debug("failIf[SSL]: trace", "matched", matched, "inv", failIf.Inv)
+			case config.FailIf_BodyMatchesRegexp:
+				matched, err = matchRegularExpression(body, failIf.Val)
+				slog.Debug("failIf[REGEXP_B]: trace", "matched", matched, "inv", failIf.Inv, "err", err)
+
+				if err != nil {
+					// force fail even if inv is false
+					matched = !failIf.Inv
+				}
+			case config.FailIf_BodyJsonMatchesCEL:
+				matched, err = matchCELExpression(ctx, body, failIf.Val)
+				slog.Debug("failIf[CEL]: trace", "matched", matched, "inv", failIf.Inv, "err", err)
+
+				if err != nil {
+					matched = !failIf.Inv
+				}
+			case config.FailIf_HeaderMatchesRegexp:
+				key, predicate, _ := strings.Cut(failIf.Val, ":")
+
+				matched, err = matchRegularExpressionsOnHeaders(resp.Header, key, predicate)
+				slog.Debug("failIf[REGEXP_H]: trace", "matched", matched, "inv", failIf.Inv, "err", err)
+
+				if err != nil {
+					matched = !failIf.Inv
+				}
+			case config.FailIf_StatusCodeMatches:
+				statusCodes := strings.Split(failIf.Val, ",")
+
+				matched = matchStatusCodes(resp.StatusCode, statusCodes)
+				slog.Debug("failIf[STATUS]: trace", "matched", matched, "inv", failIf.Inv)
+			default:
+				slog.Warn("http.fail_if: unknown module", "idx", i, "mod", failIf.Mod)
+				matched = !failIf.Inv
+			}
+
+			probeSuccess = float64(Bool2int(failIf.Inv != !matched))
+
+			if probeSuccess == 0 {
+				if metric, exists := failIfMetrics[failIf.Mod]; exists {
+					metric.Set(1)
+				}
+
+				slog.Info("skipping future validations due already failed one")
+				break
+			}
+		}
+
+		// discard value at this point, as it is no longer used afterward
+		body = nil
+
+		if !failIfBody {
+			// drain manually if we haven't already read it for validation
+			_, err = io.Copy(io.Discard, byteCounter)
+			if err != nil {
+				slog.Error("failed to discard http response body", "err", err)
+				probeSuccess = 0
+			}
 		}
 
 		tt.Actual.Exit = time.Now()
@@ -300,15 +554,17 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		}
 
 		slog.Info(
-			"probe succeeded",
+			"probe finished",
+			"success", probeSuccess,
 			"scheme", params.Scheme,
-			"timeoutMs", params.TimeoutMs,
 			"target", resp.Request.URL,
-			"method", resp.Request.Method,
-			"redirects", redirectCounter.Total,
-			"status", resp.Status,
-			"contentLength", resp.ContentLength,
-			"bodyLength", byteCounter.n,
+			"scope", params.Scope,
+			"timeout", scope.Timeout,
+			"http.method", resp.Request.Method,
+			"http.redirects", redirectCounter.Total,
+			"http.status", resp.Status,
+			"http.contentLength", resp.ContentLength,
+			"http.bodyLength", byteCounter.n,
 		)
 	}
 
