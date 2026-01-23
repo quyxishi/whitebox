@@ -525,9 +525,6 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 			}
 		}
 
-		// discard value at this point, as it is no longer used afterward
-		body = nil
-
 		if !failIfBody {
 			// drain manually if we haven't already read it for validation
 			_, err = io.Copy(io.Discard, byteCounter)
