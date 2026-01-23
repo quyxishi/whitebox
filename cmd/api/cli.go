@@ -11,7 +11,7 @@ import (
 
 type CLI struct {
 	Version    kong.VersionFlag `short:"v" help:"Print version information and exit."`
-	ConfigPath string           `name:"config" short:"c" help:"Path to whitebox config file."`
+	ConfigPath string           `name:"config.file" short:"c" help:"Path to whitebox config file."`
 }
 
 func (h *CLI) LoadConfig() (*config.WhiteboxConfig, error) {
