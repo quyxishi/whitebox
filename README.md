@@ -1,5 +1,5 @@
 <h1 align="center" style="border-bottom: none">
-    <img alt="whitebox" src="/docs/images/whitebox-logo.png" width="150"><br>
+    <img alt="whitebox" src="/docs/images/whitebox-logo.png" width="125"><br>
     whitebox
 </h1>
 
