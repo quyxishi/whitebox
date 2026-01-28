@@ -90,6 +90,10 @@ tun_probe_http_uncompressed_body_length_bytes 17650
 tun_probe_success 1
 ```
 
+## Whitebox Configuration
+
+Refer to the [example configuration](/whitebox.yml) and [code reference](/internal/config/config.go) for implementation details.
+
 ## Prometheus Configuration
 
 Whitebox follows the [multi-target exporter pattern](https://prometheus.io/docs/guides/multi-target-exporter/).
