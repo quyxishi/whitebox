@@ -17,7 +17,7 @@ The features that distinguish whitebox:
 
 - **Multi-protocol VPN Probing**: Supports probing of external VPN services including VMESS, VLESS, Trojan, Wireguard, AmneziaWG and Shadowsocks.
 - **RESTful API Service**: Exposes HTTP endpoints for on-demand or scheduled connectivity checks.
-- **Custom Probe Configuration**: Accepts probe parameters such as connection details, target URLs, max redirects, and configurable timeouts.
+- **Custom Probe Configuration**: Accepts probe parameters such as connection details, target URLs, response validation rules, and configurable timeouts.
 - **Prometheus Metrics Integration**: Exposes key probe results as Prometheus metrics.
 
 ### Prerequisites
