@@ -2,6 +2,10 @@ services:
   whitebox:
     container_name: whitebox
     build: .
+    restart: unless-stopped
     ports:
       - 9116:9116
-    restart: unless-stopped
+    command:
+      - '--config.file=/etc/whitebox/whitebox.yml'
+    volumes:
+      - ./whitebox.yml:/etc/whitebox/whitebox.yml
