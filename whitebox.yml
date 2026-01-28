@@ -15,7 +15,7 @@ scopes:
 
       # Custom request headers
       headers:
-        User-Agent: "Whitebox/0.4.0"
+        User-Agent: "whitebox/1.0.0"
         Accept: "text/plain,*/*"
 
       # Request body (mutually exclusive with body_file)
@@ -23,6 +23,20 @@ scopes:
 
       # File containing request body
       # body_file: "./request-payload.json"
+
+  # Example check alive scope
+  check_alive:
+    timeout: 5s
+
+    http:
+      max_redirects: 5
+      method: POST
+
+      headers:
+        Authorization: "Bearer dXNlcjpwYXNz"
+        Content-Type: "application/json"
+
+      body: '{"ping": true}'
 
       # Response validation rules
       fail_if:
@@ -47,21 +61,4 @@ scopes:
         # Fail if "Server" header does NOT match nginx/apache patterns
         - mod: header_matches_regexp
           val: "Server:\\s?nginx|Server:\\s?apache"
-          inv: true
-
-  # Example ping scope
-  ping:
-    timeout: 10s
-    http:
-      method: POST
-      headers:
-        Authorization: "Bearer dXNlcjpwYXNz"
-        Content-Type: "application/json"
-      body: '{"ping": true}'
-      fail_if:
-        - mod: status_code_matches
-          val: "200,201"
-          inv: true
-        - mod: body_matches_regexp
-          val: '"status":\s?"ok"'
           inv: true
