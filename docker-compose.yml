@@ -1,7 +1,7 @@
 services:
   whitebox:
+    image: rxyvea/whitebox:latest
     container_name: whitebox
-    build: .
     restart: unless-stopped
     ports:
       - 9116:9116
