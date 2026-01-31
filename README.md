@@ -104,9 +104,6 @@ Whitebox follows the [multi-target exporter pattern](https://prometheus.io/docs/
 scrape_configs:
   - job_name: 'whitebox'
     metrics_path: /probe
-    params:
-      max_redirects: [ '0' ]  # Do not follow redirects. (Optional)
-      timeout_ms: [ '5000' ]  # Probe timeout in ms. (Optional)
     file_sd_configs:
       - files: [ '/etc/prometheus/whitebox-sd-config.yml' ]  # File service discovery configurations (targets).
     relabel_configs:
