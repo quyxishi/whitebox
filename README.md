@@ -170,11 +170,12 @@ You can configure periodic probes using a simple `curl` command in a cron job or
 
 ## Roadmap
 
-- [x] VLESS XHTTP transport protocol support.
-- [x] CI/CD for basic build/test workflow.
-- [x] JSON Subscriptions VPN-url's support.
-- [x] AmneziaWG protocol support.
-- [x] Whitebox YAML configuration w/ auto-reload by SIGHUP.
+- [x] VLESS XHTTP transport protocol support ([#1](https://github.com/quyxishi/whitebox/pull/1)).
+- [x] CI/CD for basic build/test workflow ([#2](https://github.com/quyxishi/whitebox/pull/2)).
+- [x] JSON Subscriptions VPN-url's support ([#3](https://github.com/quyxishi/whitebox/pull/3)).
+- [x] HTTP Roundtrip tracing w/ duration metrics ([#4](https://github.com/quyxishi/whitebox/pull/4)).
+- [x] AmneziaWG protocol support, thanks to [@nsvk13](https://github.com/nsvk13) ([#6](https://github.com/quyxishi/whitebox/pull/6)).
+- [x] Whitebox YAML configuration w/ auto-reload by SIGHUP ([#7](https://github.com/quyxishi/whitebox/pull/7)).
 - [x] Response status/body validation.
 - [x] Custom HTTP-headers qualify support.
 - [ ] Authorization/OAuth 2.0 support.
