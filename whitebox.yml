@@ -33,7 +33,8 @@ scopes:
       method: POST
 
       headers:
-        Authorization: "Bearer dXNlcjpwYXNz"
+        # Environment variables interpolation
+        Authorization: "Bearer ${BEARER_AUTH:-dXNlcjpwYXNz}"
         Content-Type: "application/json"
 
       body: '{"ping": true}'

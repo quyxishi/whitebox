@@ -1,11 +1,7 @@
 package main
 
 import (
-	"log/slog"
-	"os"
-
 	"github.com/alecthomas/kong"
-	"github.com/goccy/go-yaml"
 	"github.com/quyxishi/whitebox/internal/config"
 )
 
@@ -22,20 +18,5 @@ func (h *CLI) LoadConfig() (*config.WhiteboxConfig, error) {
 	}
 
 	// if path provided, load from file
-	file, err := os.Open(h.ConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			slog.Error("failed to close file instance", "err", err)
-		}
-	}()
-
-	var config config.WhiteboxConfig
-	if err := yaml.NewDecoder(file).Decode(&config); err != nil {
-		return nil, err
-	}
-
-	return &config, nil
+	return config.Load(h.ConfigPath)
 }
