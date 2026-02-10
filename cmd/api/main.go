@@ -74,12 +74,12 @@ func main() {
 
 	_, err := parser.Parse(os.Args[1:])
 	if err != nil {
-		parser.FatalIfErrorf(fmt.Errorf("unable to parse cli args due: %w", err))
+		parser.FatalIfErrorf(fmt.Errorf("unable to parse cli args due: %v", err))
 	}
 
 	cfg, err := cli.LoadConfig()
 	if err != nil {
-		parser.FatalIfErrorf(fmt.Errorf("unable to load config file due: %w", err))
+		parser.FatalIfErrorf(fmt.Errorf("unable to load config file due: %v", err))
 	}
 
 	wrapper := config.NewConfigWrapper(cfg)

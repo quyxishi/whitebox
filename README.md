@@ -178,6 +178,7 @@ You can configure periodic probes using a simple `curl` command in a cron job or
 - [x] Whitebox YAML configuration w/ auto-reload by SIGHUP ([#7](https://github.com/quyxishi/whitebox/pull/7)).
 - [x] Response status/body validation.
 - [x] Custom HTTP-headers qualify support.
+- [x] Configuration environment variables interpolation support.
 - [ ] Authorization/OAuth 2.0 support.
 - [ ] Configuration for TLS protocol of HTTP probe support.
 - [ ] More advanced metrics.

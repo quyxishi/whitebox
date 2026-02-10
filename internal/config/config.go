@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ghodss/yaml"
+	"github.com/goccy/go-yaml"
 )
 
 const DefaultScopeName string = "default"
@@ -45,20 +45,20 @@ func Load(path string) (*WhiteboxConfig, error) {
 		return nil, err
 	}
 
+	expandedData := ExpandEnvironment(data)
+
 	var config WhiteboxConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	if err := yaml.Unmarshal(expandedData, &config); err != nil {
 		slog.Error("unable to parse whitebox config file", "err", err)
 		return nil, err
 	}
 
 	for name, scope := range config.Scopes {
-		if err := scope.Validate(); err != nil {
+		if err := scope.Http.Validate(); err != nil {
 			slog.Error("whitebox scope configuration is invalid", "name", name, "err", err)
-			return nil, fmt.Errorf("invalid scope configuration: %w", err)
+			return nil, fmt.Errorf("invalid scope configuration: %v", err)
 		}
 	}
-
-	// todo! cover case when scope doesn't have http declared
 
 	if _, ok := config.Scopes[DefaultScopeName]; !ok {
 		config.Scopes[DefaultScopeName] = NewScopeRecord()
@@ -78,25 +78,6 @@ func NewScopeRecord() ScopeRecord {
 		Timeout: 5 * time.Second,
 		Http:    NewHttpRecord(),
 	}
-}
-
-// Validate ensures the scope configuration semantic correctness
-func (h *ScopeRecord) Validate() error {
-	for i, rule := range h.Http.FailIf {
-		switch rule.Mod {
-		case FailIf_BodyMatchesRegexp, FailIf_BodyJsonMatchesCEL:
-			// Valid
-		case "":
-			return fmt.Errorf("http.fail_if[%d]: mod is required", i)
-		default:
-			return fmt.Errorf("http.fail_if[%d]: unknown module '%s'", i, rule.Mod)
-		}
-
-		if rule.Val == "" {
-			return fmt.Errorf("http.fail_if[%d]: val (pattern/expression) cannot be empty", i)
-		}
-	}
-	return nil
 }
 
 type HttpRecord struct {
@@ -119,6 +100,25 @@ func NewHttpRecord() HttpRecord {
 		Method:       "GET",
 		Headers:      make(map[string]string),
 	}
+}
+
+// Validate ensures the http configuration semantic correctness
+func (h *HttpRecord) Validate() error {
+	for i, rule := range h.FailIf {
+		switch rule.Mod {
+		case FailIf_SSL, FailIf_BodyMatchesRegexp, FailIf_BodyJsonMatchesCEL, FailIf_HeaderMatchesRegexp, FailIf_StatusCodeMatches:
+			// Valid
+		case "":
+			return fmt.Errorf("http.fail_if[%d]: mod is required", i)
+		default:
+			return fmt.Errorf("http.fail_if[%d]: unknown module '%s'", i, rule.Mod)
+		}
+
+		if rule.Val == "" && rule.Mod != FailIf_SSL {
+			return fmt.Errorf("http.fail_if[%d]: val (pattern/expression) cannot be empty", i)
+		}
+	}
+	return nil
 }
 
 type FailIfRecord struct {
