@@ -43,7 +43,7 @@ import (
 func matchRegularExpression(body []byte, predicate string) (bool, error) {
 	regex, err := regexp.Compile(predicate)
 	if err != nil {
-		return false, fmt.Errorf("failed to compile regex:%s due: %w", predicate, err)
+		return false, fmt.Errorf("failed to compile regex:%s due: %v", predicate, err)
 	}
 
 	return regex.Match(body), nil
@@ -54,17 +54,17 @@ func newCELExpression(predicate string) (*cel.Program, error) {
 		cel.Variable("body", cel.DynType),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct CEL environment due: %w", err)
+		return nil, fmt.Errorf("failed to construct CEL environment due: %v", err)
 	}
 
 	ast, issues := env.Compile(predicate)
 	if issues != nil && issues.Err() != nil {
-		return nil, fmt.Errorf("failed to compile CEL:%s due: %w", predicate, issues.Err())
+		return nil, fmt.Errorf("failed to compile CEL:%s due: %v", predicate, issues.Err())
 	}
 
 	celExpr, err := env.Program(ast, cel.InterruptCheckFrequency(100))
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct CEL:%s due: %w", predicate, err)
+		return nil, fmt.Errorf("failed to construct CEL:%s due: %v", predicate, err)
 	}
 
 	return &celExpr, nil
@@ -73,7 +73,7 @@ func newCELExpression(predicate string) (*cel.Program, error) {
 func matchCELExpression(ctx context.Context, body []byte, predicate string) (bool, error) {
 	var bodyJSON any
 	if err := json.Unmarshal(body, &bodyJSON); err != nil {
-		return false, fmt.Errorf("failed to unmarshall http body to json due: %w", err)
+		return false, fmt.Errorf("failed to unmarshall http body to json due: %v", err)
 	}
 
 	evalPayload := map[string]any{
@@ -82,12 +82,12 @@ func matchCELExpression(ctx context.Context, body []byte, predicate string) (boo
 
 	celExpr, err := newCELExpression(predicate)
 	if err != nil {
-		return false, fmt.Errorf("unable to perform CEL validation due: %w", err)
+		return false, fmt.Errorf("unable to perform CEL validation due: %v", err)
 	}
 
 	result, details, err := (*celExpr).ContextEval(ctx, evalPayload)
 	if err != nil {
-		return false, fmt.Errorf("failed to evaluate CEL:%s due: %w", predicate, err)
+		return false, fmt.Errorf("failed to evaluate CEL:%s due: %v", predicate, err)
 	}
 	if result.Type() != cel.BoolType {
 		return false, fmt.Errorf("on CEL:%s evaluation result is not a boolean, details: %v", predicate, details)
@@ -105,7 +105,7 @@ func matchRegularExpressionsOnHeaders(headers http.Header, key string, predicate
 
 	regex, err := regexp.Compile(predicate)
 	if err != nil {
-		return false, fmt.Errorf("failed to compile regex:%s due: %w", predicate, err)
+		return false, fmt.Errorf("failed to compile regex:%s due: %v", predicate, err)
 	}
 
 	for _, v := range values {

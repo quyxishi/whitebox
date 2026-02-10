@@ -56,7 +56,7 @@ func Load(path string) (*WhiteboxConfig, error) {
 	for name, scope := range config.Scopes {
 		if err := scope.Http.Validate(); err != nil {
 			slog.Error("whitebox scope configuration is invalid", "name", name, "err", err)
-			return nil, fmt.Errorf("invalid scope configuration: %w", err)
+			return nil, fmt.Errorf("invalid scope configuration: %v", err)
 		}
 	}
 

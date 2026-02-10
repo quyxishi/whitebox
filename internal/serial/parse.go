@@ -96,7 +96,7 @@ func ParseSubscriptionURI(json_sub_uri string, params *ParseSubParams) (out stri
 
 		for _, s := range debugFields {
 			if err := j.Set(s.key, s.val); err != nil {
-				return "", fmt.Errorf("failed to patch config with key '%s': %w", s.key, err)
+				return "", fmt.Errorf("failed to patch config with key '%s': %v", s.key, err)
 			}
 		}
 
