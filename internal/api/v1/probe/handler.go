@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -440,6 +441,16 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	// non-canonical header keys assignment
 	for k, v := range scope.Http.Headers {
 		req.Header[k] = []string{v}
+	}
+
+	// handle basic authorization (see rfc7617)
+	if scope.Http.Auth.Basic.ID != "" {
+		req.Header.Set(
+			"authorization",
+			"Basic "+base64.StdEncoding.EncodeToString(
+				fmt.Appendf(nil, "%s:%s", scope.Http.Auth.Basic.ID, scope.Http.Auth.Basic.Password),
+			),
+		)
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))

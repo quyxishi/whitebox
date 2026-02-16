@@ -92,6 +92,8 @@ type HttpRecord struct {
 
 	// Response validation constraints
 	FailIf []FailIfRecord `yaml:"fail_if,omitempty"`
+
+	Auth AuthRecord `yaml:"auth,omitempty"`
 }
 
 func NewHttpRecord() HttpRecord {
@@ -108,6 +110,7 @@ func (h *HttpRecord) Validate() error {
 		switch rule.Mod {
 		case FailIf_SSL, FailIf_BodyMatchesRegexp, FailIf_BodyJsonMatchesCEL, FailIf_HeaderMatchesRegexp, FailIf_StatusCodeMatches:
 			// Valid
+			// todo! regexp & cel validation
 		case "":
 			return fmt.Errorf("http.fail_if[%d]: mod is required", i)
 		default:
@@ -130,4 +133,15 @@ type FailIfRecord struct {
 
 	// Invert predicate
 	Inv bool `yaml:"inv,omitempty"`
+}
+
+// todo! docs + validate for only one defined authorization per-scope
+type AuthRecord struct {
+	Basic BasicAuthRecord `yaml:"basic,omitempty"`
+	// ...
+}
+
+type BasicAuthRecord struct {
+	ID       string `yaml:"id,omitempty"`
+	Password string `yaml:"password,omitempty"`
 }
