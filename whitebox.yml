@@ -63,3 +63,13 @@ scopes:
         - mod: header_matches_regexp
           val: "Server:\\s?nginx|Server:\\s?apache"
           inv: true
+  
+  basic_auth_example:
+    timeout: 5s
+    http:
+      max_redirects: 5
+      method: GET
+      auth:
+        basic:
+          id: t@t.tt
+          password: secret
