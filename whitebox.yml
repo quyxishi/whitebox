@@ -63,7 +63,7 @@ scopes:
         - mod: header_matches_regexp
           val: "Server:\\s?nginx|Server:\\s?apache"
           inv: true
-  
+
   basic_auth_example:
     timeout: 5s
     http:
@@ -73,3 +73,69 @@ scopes:
         basic:
           id: t@t.tt
           password: secret
+
+  bearer_raw_auth_example:
+    timeout: 5s
+    http:
+      max_redirects: 5
+      method: GET
+      auth:
+        bearer:
+          kind: raw
+          credentials: "${CREDENTIALS}"
+
+  bearer_jwt_symmetric_auth_example:
+    timeout: 5s
+    http:
+      max_redirects: 5
+      method: GET
+      auth:
+        bearer:
+          # HMAC with SHA-256
+          kind: jwt_hs256
+
+          # Standard claims `alg` and `typ` are handled automatically
+          headers:
+            kid: 8VZedATH_gO1EI1oViIw5L7BozRt0
+
+          # Standard claims `iat` and `exp` are handled automatically if refresh is enabled
+          claims:
+            jti: 019c704c-97b9-7d1f-8de4-5ca136030d2b
+            iss: https://keys.example.com/auth/realms/portal
+            sub: 019c704d-88f8-70e0-9691-8ef50abb1c65
+            azp: portal
+            user:
+              id: 019c704f-87a4-7262-aecc-862cf21d5ed0
+              display_name: John Doe
+
+          refresh: true
+          interval: 15m
+          key: "${HMAC_SECRET_KEY}"
+
+  bearer_jwt_asymmetric_auth_example:
+    timeout: 5s
+    http:
+      max_redirects: 5
+      method: GET
+      auth:
+        bearer:
+          # ECDSA with P-521 and SHA-512
+          kind: jwt_es512
+
+          # Standard claims `alg` and `typ` are handled automatically
+          headers:
+            kid: 8VZedATH_gO1EI1oViIw5L7BozRt0
+
+          # Standard claims `iat` and `exp` are handled automatically if refresh is enabled
+          claims:
+            jti: 019c704c-97b9-7d1f-8de4-5ca136030d2b
+            iss: https://keys.example.com/auth/realms/portal
+            sub: 019c704d-88f8-70e0-9691-8ef50abb1c65
+            azp: portal
+            user:
+              id: 019c704f-87a4-7262-aecc-862cf21d5ed0
+              display_name: John Doe
+
+          refresh: true
+          interval: 15m
+          key_file: "./ecdsa-p512-private.pem"
