@@ -82,7 +82,7 @@ scopes:
       auth:
         bearer:
           kind: raw
-          credentials: "${CREDENTIALS}"
+          credentials: "${CREDENTIALS:-secret}"
 
   bearer_jwt_symmetric_auth_example:
     timeout: 5s
@@ -110,7 +110,7 @@ scopes:
 
           refresh: true
           interval: 15m
-          key: "${HMAC_SECRET_KEY}"
+          key: "${HMAC_SECRET_KEY:-secret}"
 
   bearer_jwt_asymmetric_auth_example:
     timeout: 5s
@@ -120,7 +120,7 @@ scopes:
       auth:
         bearer:
           # ECDSA with P-521 and SHA-512
-          kind: jwt_es512
+          # kind: jwt_es512
 
           # Standard claims `alg` and `typ` are handled automatically
           headers:
