@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -430,7 +429,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	req, err := http.NewRequest(scope.Http.Method, params.Target, body)
 	if err != nil {
-		slog.Error("failed to to construct http.Request", "err", err)
+		slog.Error("failed to construct http.Request", "err", err)
 		ctx.String(http.StatusInternalServerError, "Unable to construct http.Request due: %v", err)
 		return
 	}
@@ -443,14 +442,16 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		req.Header[k] = []string{v}
 	}
 
-	// handle basic authorization (see rfc7617)
-	if scope.Http.Auth.Basic.ID != "" {
-		req.Header.Set(
-			"authorization",
-			"Basic "+base64.StdEncoding.EncodeToString(
-				fmt.Appendf(nil, "%s:%s", scope.Http.Auth.Basic.ID, scope.Http.Auth.Basic.Password),
-			),
-		)
+	// handle authorization
+	authStrategy := scope.Http.Auth.Strategy()
+	if authStrategy != nil {
+		slog.Info("using authentication strategy", "name", authStrategy.Name())
+
+		if err := authStrategy.Issue(req); err != nil {
+			slog.Error("failed to issue authentication", "strategy", authStrategy.Name(), "err", err)
+			ctx.String(http.StatusInternalServerError, "Unable to issue authentication on strategy:%s due: %v", authStrategy.Name(), err)
+			return
+		}
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))

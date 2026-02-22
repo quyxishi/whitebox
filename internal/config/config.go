@@ -1,12 +1,17 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
 	"github.com/goccy/go-yaml"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/quyxishi/whitebox/internal/auth"
+	"github.com/quyxishi/whitebox/internal/auth/basic"
+	"github.com/quyxishi/whitebox/internal/auth/bearer"
 )
 
 // DefaultScopeName is the reserved identifier for the fallback configuration scope.
@@ -97,7 +102,45 @@ const (
 	BearerAuth_JWT_PS384 BearerAuthType = "jwt_ps384"
 	// BearerAuth_JWT_PS512 uses RSASSA-PSS with SHA-512.
 	BearerAuth_JWT_PS512 BearerAuthType = "jwt_ps512"
+
+	// --- EdDSA Family (Asymmetric) ---
+	// Edwards-curve Digital Signature Algorithm (EdDSA) using the Ed25519 curve,
+	// as defined in RFC 8037. Unlike ECDSA, signatures are fully deterministic,
+	// eliminating the risk of nonce-reuse vulnerabilities.
+
+	// BearerAuth_JWT_EDDSA uses EdDSA with the Ed25519 curve (RFC 8037).
+	BearerAuth_JWT_EDDSA BearerAuthType = "jwt_eddsa"
 )
+
+var JWT_METHOD_MAPPING map[BearerAuthType]jwt.SigningMethod = map[BearerAuthType]jwt.SigningMethod{
+	// --- HMAC-SHA Family ---
+
+	BearerAuth_JWT_HS256: jwt.SigningMethodHS256,
+	BearerAuth_JWT_HS384: jwt.SigningMethodHS384,
+	BearerAuth_JWT_HS512: jwt.SigningMethodHS512,
+
+	// --- RSA Family ---
+
+	BearerAuth_JWT_RS256: jwt.SigningMethodRS256,
+	BearerAuth_JWT_RS384: jwt.SigningMethodRS384,
+	BearerAuth_JWT_RS512: jwt.SigningMethodRS512,
+
+	// --- ECDSA Family ---
+
+	BearerAuth_JWT_ES256: jwt.SigningMethodES256,
+	BearerAuth_JWT_ES384: jwt.SigningMethodES384,
+	BearerAuth_JWT_ES512: jwt.SigningMethodES512,
+
+	// --- RSASSA-PSS Family ---
+
+	BearerAuth_JWT_PS256: jwt.SigningMethodPS256,
+	BearerAuth_JWT_PS384: jwt.SigningMethodPS384,
+	BearerAuth_JWT_PS512: jwt.SigningMethodPS512,
+
+	// --- EdDSA Family ---
+
+	BearerAuth_JWT_EDDSA: jwt.SigningMethodEdDSA,
+}
 
 // WhiteboxConfig represents the root configuration structure for the monitoring application.
 // It acts as a container for named scopes, where each scope represents a distinct
@@ -105,12 +148,12 @@ const (
 type WhiteboxConfig struct {
 	// Scopes is a map where the key is a unique identifier for the test scope
 	// and the value is the configuration for that specific scenario.
-	Scopes map[string]ScopeRecord `yaml:"scopes,omitempty"`
+	Scopes map[string]*ScopeRecord `yaml:"scopes,omitempty"`
 }
 
 func NewWhiteboxConfig() WhiteboxConfig {
 	return WhiteboxConfig{
-		Scopes: map[string]ScopeRecord{DefaultScopeName: NewScopeRecord()},
+		Scopes: map[string]*ScopeRecord{DefaultScopeName: NewScopeRecord()},
 	}
 }
 
@@ -157,8 +200,8 @@ type ScopeRecord struct {
 	Http HttpRecord `yaml:"http,omitempty"`
 }
 
-func NewScopeRecord() ScopeRecord {
-	return ScopeRecord{
+func NewScopeRecord() *ScopeRecord {
+	return &ScopeRecord{
 		Timeout: 5 * time.Second,
 		Http:    NewHttpRecord(),
 	}
@@ -205,19 +248,91 @@ func NewHttpRecord() HttpRecord {
 func (h *HttpRecord) Validate() error {
 	for i, rule := range h.FailIf {
 		switch rule.Mod {
-		case FailIf_SSL, FailIf_BodyMatchesRegexp, FailIf_BodyJsonMatchesCEL, FailIf_HeaderMatchesRegexp, FailIf_StatusCodeMatches:
+		case
+			FailIf_SSL,
+			FailIf_BodyMatchesRegexp,
+			FailIf_BodyJsonMatchesCEL,
+			FailIf_HeaderMatchesRegexp,
+			FailIf_StatusCodeMatches:
 			// Valid
 			// todo! regexp & cel validation
 		case "":
 			return fmt.Errorf("http.fail_if[%d]: mod is required", i)
 		default:
-			return fmt.Errorf("http.fail_if[%d]: unknown module '%s'", i, rule.Mod)
+			return fmt.Errorf("http.fail_if[%d]: unknown module: %s", i, rule.Mod)
 		}
 
 		if rule.Val == "" && rule.Mod != FailIf_SSL {
 			return fmt.Errorf("http.fail_if[%d]: val (pattern/expression) cannot be empty", i)
 		}
 	}
+
+	if h.Auth.Basic.ID != "" {
+		h.Auth.strategy = &basic.BasicAuthStrategy{
+			ID:       h.Auth.Basic.ID,
+			Password: h.Auth.Basic.Password,
+		}
+
+		if err := h.Auth.strategy.Init(); err != nil {
+			return fmt.Errorf("http.auth.basic: failed to initialize Basic strategy due: %v", err)
+		}
+	}
+	if h.Auth.Bearer.Kind != "" {
+		switch h.Auth.Bearer.Kind {
+		case BearerAuth_RAW:
+			if h.Auth.Bearer.Credentials == "" {
+				return errors.New("http.auth.bearer: credentials cannot be empty when kind=raw")
+			}
+
+			h.Auth.strategy = &bearer.BearerRawAuthStrategy{
+				Credentials: h.Auth.Bearer.Credentials,
+			}
+
+			if err := h.Auth.strategy.Init(); err != nil {
+				return fmt.Errorf("http.auth.bearer: failed to initialize BearerRAW strategy due: %v", err)
+			}
+		case
+			BearerAuth_JWT_HS256,
+			BearerAuth_JWT_HS384,
+			BearerAuth_JWT_HS512,
+
+			BearerAuth_JWT_RS256,
+			BearerAuth_JWT_RS384,
+			BearerAuth_JWT_RS512,
+
+			BearerAuth_JWT_ES256,
+			BearerAuth_JWT_ES384,
+			BearerAuth_JWT_ES512,
+
+			BearerAuth_JWT_PS256,
+			BearerAuth_JWT_PS384,
+			BearerAuth_JWT_PS512,
+
+			BearerAuth_JWT_EDDSA:
+
+			method, ok := JWT_METHOD_MAPPING[h.Auth.Bearer.Kind]
+			if !ok {
+				return fmt.Errorf("http.auth.bearer: unexpected kind: %s", h.Auth.Bearer.Kind)
+			}
+
+			h.Auth.strategy = &bearer.BearerJWTAuthStrategy{
+				SigningMethod: method,
+				Headers:       h.Auth.Bearer.Headers,
+				Claims:        h.Auth.Bearer.Claims,
+				Refresh:       h.Auth.Bearer.Refresh,
+				Interval:      h.Auth.Bearer.Interval,
+				Key:           h.Auth.Bearer.Key,
+				KeyFile:       h.Auth.Bearer.KeyFile,
+			}
+
+			if err := h.Auth.strategy.Init(); err != nil {
+				return fmt.Errorf("http.auth.bearer: failed to initialize BearerJWT strategy due: %v", err)
+			}
+		default:
+			return fmt.Errorf("http.auth.bearer: unknown kind: %s", h.Auth.Bearer.Kind)
+		}
+	}
+
 	return nil
 }
 
@@ -247,6 +362,12 @@ type AuthRecord struct {
 	Bearer BearerAuthRecord `yaml:"bearer,omitempty"`
 
 	// ...
+
+	strategy auth.HttpAuthStrategy
+}
+
+func (h *AuthRecord) Strategy() auth.HttpAuthStrategy {
+	return h.strategy
 }
 
 // BasicAuthRecord defines the credentials for HTTP Basic Authentication (RFC 7617).
