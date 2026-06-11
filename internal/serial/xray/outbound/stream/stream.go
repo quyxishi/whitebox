@@ -2,7 +2,10 @@ package stream
 
 import (
 	"cmp"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/url"
 	net "net/url"
 	"strings"
 
@@ -115,9 +118,21 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 		}
 	case NETWORK_XHTTP:
 		out.XhttpSettings = &XhttpConfig{
-			Path: cmp.Or(query.Get("path"), "/"),
-			Host: query.Get("host"),
-			Mode: query.Get("mode"),
+			Path:  cmp.Or(query.Get("path"), "/"),
+			Host:  query.Get("host"),
+			Mode:  query.Get("mode"),
+			Extra: map[string]any{},
+		}
+
+		if extra := query.Get("extra"); extra != "" {
+			extra, err = url.QueryUnescape(extra)
+			if err != nil {
+				return StreamConfig{}, fmt.Errorf("query=extra unescape failed > contains not valid url-encoded data, required for xhttpSettings: %v", err)
+			}
+
+			if err := json.Unmarshal([]byte(extra), &out.XhttpSettings.Extra); err != nil {
+				return StreamConfig{}, fmt.Errorf("query=extra unmarshal failed > contains not valid json data, required for xhttpSettings: %v", err)
+			}
 		}
 	}
 
