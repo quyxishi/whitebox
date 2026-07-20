@@ -154,8 +154,8 @@ scrape_configs:
 
 ## See in Action
 
-###### Example Grafana dashboard 'hemera' powered by `whitebox` and `blackbox`
-![hemera-dashboard](/docs/images/hemera-view.png)
+###### Example Grafana dashboard 'jarvis' powered by `whitebox` and `blackbox`
+![jarvis-dashboard](/docs/images/jarvis-view.png)
 
 ### Prometheus-less Approach
 
