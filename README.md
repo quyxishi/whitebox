@@ -179,8 +179,8 @@ You can configure periodic probes using a simple `curl` command in a cron job or
 - [x] Response status/body validation.
 - [x] Custom HTTP-headers qualify support.
 - [x] Configuration environment variables interpolation support ([#8](https://github.com/quyxishi/whitebox/pull/8)).
+- [x] Hysteria2 + XHTTP extra settings support.
 - [ ] Authorization/OAuth 2.0 support.
-- [ ] Hysteria2 + XHTTP extra settings support.
 - [ ] Configuration for TLS protocol of HTTP probe support.
 - [ ] More advanced metrics.
 

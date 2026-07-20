@@ -7,4 +7,5 @@ const (
 	SchemeShadowsocks string = "ss"
 	SchemeWireguard   string = "wireguard"
 	SchemeAmneziaWG   string = "awg"
+	SchemeHysteria2   string = "hysteria2"
 )

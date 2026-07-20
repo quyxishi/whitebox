@@ -39,6 +39,10 @@ type StreamConfig struct {
 	WsSettings          *WsConfig            `json:"wsSettings,omitempty"`
 	HttpupgradeSettings *HttpUpgradeSettings `json:"httpupgradeSettings,omitempty"`
 	KcpSettings         *KcpConfig           `json:"kcpSettings,omitempty"`
+	HysteriaSettings    *HysteriaSettings    `json:"hysteriaSettings,omitempty"`
+
+	// todo! declare as own structure
+	FinalMask map[string]any `json:"finalmask,omitempty"`
 
 	// todo! sockopt
 }
@@ -70,6 +74,36 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 		return StreamConfig{}, nil
 	case extra.SchemeAmneziaWG:
 		return StreamConfig{}, nil
+	case extra.SchemeHysteria2:
+		out = StreamConfig{
+			Network: "hysteria",
+			HysteriaSettings: &HysteriaSettings{
+				Auth:    con.URL.User.Username(),
+				Version: 2,
+			},
+		}
+
+		if query.Has("sni") {
+			out.Security = "tls"
+			out.TlsSettings = &TlsConfig{
+				Alpn:        []string{"h3"},
+				Fingerprint: "chrome",
+				SNI:         query.Get("sni"),
+			}
+		}
+
+		if fm := query.Get("fm"); fm != "" {
+			fm, err = url.QueryUnescape(fm)
+			if err != nil {
+				return StreamConfig{}, fmt.Errorf("query=fm unescape failed > contains not valid url-encoded data, required for hysteria2 (streamSettings): %v", err)
+			}
+
+			if err := json.Unmarshal([]byte(fm), &out.FinalMask); err != nil {
+				return StreamConfig{}, fmt.Errorf("query=fm unmarshal failed > contains not valid json data, required for hysteria2 (streamSettings): %v", err)
+			}
+		}
+
+		return out, nil
 	}
 
 	out = StreamConfig{

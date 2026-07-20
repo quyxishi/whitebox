@@ -88,6 +88,9 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 	// The obfuscation parameters (Jc, Jmin, etc.) are part of the wireguard settings
 	case extra.SchemeAmneziaWG:
 		conProtocol = "wireguard"
+	// Xray-core uses "hysteria" as protocol name for Hysteria2
+	case extra.SchemeHysteria2:
+		conProtocol = "hysteria"
 	}
 
 	outboundConfig := outbound.OutboundConfig{
@@ -112,6 +115,8 @@ func (h *XrayConfig) Parse(url *url.URL) (out string, err error) {
 		protocolOutbound = protocol.ParseWireguardOutbound(&con)
 	case extra.SchemeAmneziaWG:
 		protocolOutbound = protocol.ParseAmneziaWGOutbound(&con)
+	case extra.SchemeHysteria2:
+		protocolOutbound, err = protocol.ParseHysteria2Outbound(&con)
 	default:
 		return "", fmt.Errorf("unexpected schema: %s", url.Scheme)
 	}

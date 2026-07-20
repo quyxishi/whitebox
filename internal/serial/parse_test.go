@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/xtls/xray-core/core"
 	"github.com/quyxishi/whitebox/internal/serial"
+	"github.com/xtls/xray-core/core"
 )
 
 const (
@@ -40,6 +40,8 @@ const (
 
 	URI_WIREGUARD string = "wireguard://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IFNObk5ON0l4YzN0emxYS2FJNGY4NnEyOFYzbnhGS2YxcmNoYWt4bWdBbHM9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCAxLjAuMC4xCk1UVSA9IDE0MjAKCiMgLTEKW1BlZXJdClB1YmxpY0tleSA9IHk2MTdkQ2dNM1g2bEtEanBkdDVhR2NBWmROWW5OT0FwMFMyanFUbGpmZzA9CkFsbG93ZWRJUHMgPSAwLjAuMC4wLzAsIDo6LzAKRW5kcG9pbnQgPSAxLjIuMy40OjI3Nzg5"
 	URI_AMNEZIAWG string = "awg://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IFNObk5ON0l4YzN0emxYS2FJNGY4NnEyOFYzbnhGS2YzcmNoYWt4bWdCbHM9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCAxLjAuMC4xCk1UVSA9IDE0MjAKSmMgPSAzCkptaW4gPSA1MApKbWF4ID0gMTAwMApTMSA9IDIwClMyID0gNzgKSDEgPSAzOTEzMTI3OApIMiA9IDgzMjEzODE4NQpIMyA9IDE0MzY5NTc4NTcKSDQgPSAxNjM1ODc3NzQ2CgpbUGVlcl0KUHVibGljS2V5ID0geTYxN2RDZ00zWDZsS0RqcGR0NWFHY0FaZE5Zbk5PQXAwUzNqYVRsamZnMD0KQWxsb3dlZElQcyA9IDAuMC4wLjAvMCwgOjovMApFbmRwb2ludCA9IDEuMi4zLjQ6Mjc3ODkK"
+
+	URI_HYSTERIA2_TLS string = "hysteria2://b4edbe4c-bc8a-49e2-a97a-6528ebba904f@1.2.3.4:3478/?obfs=salamander&obfs-password=f3dce2431df45fea0fa283ac0e66489d9d2f84d6063906990c8c618e11fee854&sni=fi-hel-nidx00.mesh.usequoia.com&fm=%7B%22udp%22%3A%5B%7B%22type%22%3A%22salamander%22%2C%22settings%22%3A%7B%22password%22%3A%22f3dce2431df45fea0fa283ac0e66489d9d2f84d6063906990c8c618e11fee854%22%7D%7D%5D%2C%22quickParams%22%3A%7B%22udpHop%22%3A%7B%22ports%22%3A%225349%2C20000-50000%22%2C%22interval%22%3A%225-10%22%7D%2C%22congestion%22%3A%22bbr%22%7D%7D"
 
 	// URI_SUBJSON_VLESS string = "http://1.2.3.4:2096/json/l08vryrtn0gb07s4"
 )
@@ -180,6 +182,12 @@ func TestParseURI_Wireguard(t *testing.T) {
 
 func TestParseURI_AmneziaWG(t *testing.T) {
 	xrayParseAndLoad(t, URI_AMNEZIAWG)
+}
+
+// -- HYSTERIA2
+
+func TestParseURI_Hysteria2(t *testing.T) {
+	xrayParseAndLoad(t, URI_HYSTERIA2_TLS)
 }
 
 // -- SUBJSON
