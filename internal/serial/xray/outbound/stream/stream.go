@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	net "net/url"
 	"strings"
 
 	"github.com/quyxishi/whitebox/internal/serial/xray/outbound/extra"
@@ -57,7 +56,7 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 		}
 		inner := *con.VmessInner
 
-		mid := net.Values(map[string][]string{
+		mid := url.Values(map[string][]string{
 			"type":        {extra.GetOrDefault[string, string](inner, "net")},
 			"security":    {extra.GetOrDefault[string, string](inner, "tls")},
 			"sni":         {extra.GetOrDefault[string, string](inner, "sni")},
