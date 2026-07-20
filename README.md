@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-    <code>whitebox</code> for <a href="https://prometheus.io/" target="_blank">Prometheus</a> provides availability monitoring of external VPN services powered by VMESS, VLESS, TROJAN, WG, AWG and SS.
+    <code>whitebox</code> for <a href="https://prometheus.io/" target="_blank">Prometheus</a> provides availability monitoring of external VPN services powered by VMESS, VLESS, TROJAN, WG, AWG, SS and HYSTERIA.
 </p>
 
 <div align="center">
@@ -15,7 +15,7 @@
 
 The features that distinguish whitebox:
 
-- **Multi-protocol VPN Probing**: Supports probing of external VPN services including VMESS, VLESS, Trojan, Wireguard, AmneziaWG and Shadowsocks.
+- **Multi-protocol VPN Probing**: Supports probing of external VPN services including VMESS, VLESS, Trojan, Wireguard, AmneziaWG, Shadowsocks and Hysteria2.
 - **RESTful API Service**: Exposes HTTP endpoints for on-demand or scheduled connectivity checks.
 - **Custom Probe Configuration**: Accepts probe parameters such as connection details, target URLs, response validation rules, and configurable timeouts.
 - **Prometheus Metrics Integration**: Exposes key probe results as Prometheus metrics.
@@ -126,7 +126,7 @@ scrape_configs:
 ```yaml
 - targets: [ "https://google.com" ]
   labels:
-    ctx: "vless://c9f5228c-8870-47bd-a92f-9b38c7c02b08@1.2.3.4:443?type=tcp&encryption=none&security=reality&pbk=DF-3KL2W4RuNB2HgsEDmLqHLvvTTN4_QfwUCUn8Uhy0&fp=firefox&sni=web.max.ru&sid=dc8wq0b47450f9&spx=%2F&flow=xtls-rprx-vision#ring0-raii-idx0"
+    ctx: "vless://c9f5228c-8870-47bd-a92f-9b38c7c02b08@1.2.3.4:443?type=tcp&encryption=none&security=reality&pbk=DF-3KL2W4RuNB2HgsEDmLqHLvvTTN4_QfwUCUn8Uhy0&fp=firefox&sni=ce-cdn.icloud-content.com&sid=dc8wq0b47450f9&spx=%2F&flow=xtls-rprx-vision#ring0-raii-idx0"
     client: "ring0-raii-idx0"  # Client unique identifier
     protocol: "vless"          # VPN protocol
     # You can also add additional labels here:
