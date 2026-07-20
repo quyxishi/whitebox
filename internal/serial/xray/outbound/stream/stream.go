@@ -126,8 +126,18 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 			Congestion:       false,
 			ReadBufferSize:   2,
 			WriteBufferSize:  2,
-			Header:           &KcpHeader{HeaderType: cmp.Or(query.Get("headerType"), "none")},
-			Seed:             query.Get("seed"),
+		}
+
+		out.FinalMask = map[string]any{
+			"udp": []any{
+				map[string]any{
+					"type": "mkcp-legacy",
+					"settings": map[string]string{
+						"header": query.Get("headerType"),
+						"value":  query.Get("seed"),
+					},
+				},
+			},
 		}
 	case NETWORK_WEBSOCKET:
 		out.WsSettings = &WsConfig{
