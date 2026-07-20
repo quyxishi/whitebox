@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/amnezia-vpn/amnezia-xray-core/core"
+	"github.com/xtls/xray-core/core"
 	"github.com/quyxishi/whitebox/internal/serial"
 )
 
