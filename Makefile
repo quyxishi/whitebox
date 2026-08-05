@@ -15,6 +15,11 @@ test:
 	@echo -- Testing
 	@go test ./... -v
 
+# Test the application with the race detector
+test-race:
+	@echo -- Testing [race]
+	@go test ./... -v -race
+
 # Clean the binary
 clean:
 	@echo -- Cleaning
@@ -32,7 +37,7 @@ watch:
 		Write-Output '-- Watching'; \
 	}"
 
-.PHONY: all build run test clean watch
+.PHONY: all build run test test-race clean watch
 
 %:
 	@:
