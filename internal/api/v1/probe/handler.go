@@ -290,7 +290,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		Help: "Response HTTP status code",
 	})
 
-	for _, lv := range []string{"connect", "tls", "processing", "transfer"} {
+	for _, lv := range []string{"resolve", "connect", "tls", "processing", "transfer"} {
 		probeDurationGaugeVec.WithLabelValues(lv)
 	}
 
@@ -400,6 +400,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	client.Transport = &tt
 
 	trace := &httptrace.ClientTrace{
+		GetConn:              tt.GetConn,
 		DNSStart:             tt.DNSStart,
 		DNSDone:              tt.DNSDone,
 		TLSHandshakeStart:    tt.TLSHandshakeStart,
@@ -449,6 +450,8 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	var probeSuccess float64 = 1
 	var probeElapsed float64
 	var probeBodyBytes float64
+
+	probeStart := time.Now()
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -534,8 +537,12 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 			}
 		}
 
-		tt.Actual.Exit = time.Now()
-		probeElapsed = tt.Actual.Exit.Sub(tt.Traces[0].Init).Seconds()
+		tt.Finish()
+
+		// wall clock rather than trace timestamps: the dns/connect hooks only
+		// fire for transports whose dial chain reaches a net.Dialer, so a
+		// trace-derived total is 9.2e9 on hysteria2 and wireguard
+		probeElapsed = time.Since(probeStart).Seconds()
 		probeBodyBytes = float64(byteCounter.n)
 
 		if err := byteCounter.Close(); err != nil {
@@ -575,53 +582,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	tt.mu.Lock()
 	defer tt.mu.Unlock()
 
-	slog.Info(fmt.Sprintf("a total of %d trace(s) were encountered during probing", len(tt.Traces)))
-
-	for i, trace := range tt.Traces {
-		slog.Debug(
-			"trace:",
-			"roundtrip", i,
-			"init", trace.Init.UnixMilli(),
-			"dnsExit", trace.DnsExit.UnixMilli(),
-			"connectExit", trace.ConnectExit.UnixMilli(),
-			"gotConnect", trace.GotConnect.UnixMilli(),
-			"gotFirstByte", trace.GotFirstByte.UnixMilli(),
-			"tlsEntry", trace.TlsEntry.UnixMilli(),
-			"tlsExit", trace.TlsExit.UnixMilli(),
-			"exit", trace.Exit.UnixMilli(),
-		)
-
-		if i != 0 {
-			probeDurationGaugeVec.WithLabelValues("resolve").Add(trace.DnsExit.Sub(trace.Init).Seconds())
-		}
-
-		// continue here if we never got a connection because a request failed
-		if trace.GotConnect.IsZero() {
-			continue
-		}
-
-		if trace.Tls {
-			probeDurationGaugeVec.WithLabelValues("connect").Add(trace.ConnectExit.Sub(trace.DnsExit).Seconds())
-			probeDurationGaugeVec.WithLabelValues("tls").Add(trace.TlsExit.Sub(trace.TlsEntry).Seconds())
-		} else {
-			probeDurationGaugeVec.WithLabelValues("connect").Add(trace.GotConnect.Sub(trace.DnsExit).Seconds())
-		}
-
-		// continue here if we never got a response from the server
-		if trace.GotFirstByte.IsZero() {
-			continue
-		}
-
-		probeDurationGaugeVec.WithLabelValues("processing").Add(trace.GotFirstByte.Sub(trace.GotConnect).Seconds())
-
-		// continue here if we never read the full response from the server
-		// usually this means that request either failed or was redirected
-		if trace.Exit.IsZero() {
-			continue
-		}
-
-		probeDurationGaugeVec.WithLabelValues("transfer").Add(trace.Exit.Sub(trace.GotFirstByte).Seconds())
-	}
+	observeTraces(probeDurationGaugeVec, tt.Traces)
 
 	// *
 
