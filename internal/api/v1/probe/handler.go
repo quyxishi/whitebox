@@ -383,9 +383,20 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 				return core.Dial(ctx, instance, dest)
 			},
+			// the transport is per-probe, so there is nothing to reuse a kept-alive
+			// connection for; without this, each probe leaks one tunnel (see below)
+			DisableKeepAlives: true,
 		},
 		CheckRedirect: redirectCounter.CheckRedirect,
 	}
+
+	// a per-probe Transport parks its connections in the idle pool, and a manually
+	// constructed http.Transport has IdleConnTimeout == 0, which means "keep them
+	// forever" (the 90s default lives on DefaultTransport only). Each parked
+	// connection also keeps a readLoop goroutine referencing the Transport, so it
+	// never becomes garbage: the socket stays ESTABLISHED for the lifetime of the
+	// process. Runs before instance.Close() as defers unwind in LIFO order.
+	defer client.CloseIdleConnections()
 
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
