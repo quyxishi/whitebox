@@ -49,6 +49,16 @@ sudo docker build --tag whitebox .
 sudo docker run --rm -d -p 9116:9116 whitebox
 ```
 
+### Logging
+
+Verbosity is controlled by the `--log.level` flag (`-l`) or the `WHITEBOX_LOG_LEVEL` environment variable, one of `debug`, `info` (default), `warn`, `error`:
+
+```shell
+sudo docker run --rm -d -p 9116:9116 -e WHITEBOX_LOG_LEVEL=warn whitebox
+```
+
+On `debug`, per-request access logs and verbose `xray-core` tunnel logs are emitted as well; on any higher level both are suppressed.
+
 ### Checking the results
 
 After deploying, you can validate VPN tunnel probing by visiting:

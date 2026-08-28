@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
@@ -8,12 +9,16 @@ import (
 
 	v1 "github.com/quyxishi/whitebox/internal/api/v1"
 	"github.com/quyxishi/whitebox/internal/api/v1/probe"
+	mlog "github.com/quyxishi/whitebox/internal/log"
 )
 
 func (srv *Server) RegisterRoutes() http.Handler {
 	r := gin.New()
 
-	r.Use(gin.Logger())
+	if mlog.Enabled(slog.LevelDebug) {
+		r.Use(gin.Logger())
+	}
+
 	r.Use(v1.GlobalErrorHandler())
 
 	// Configure CORS at the root level

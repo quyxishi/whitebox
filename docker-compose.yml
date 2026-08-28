@@ -7,5 +7,6 @@ services:
       - 9116:9116
     command:
       - '--config.file=/etc/whitebox/whitebox.yml'
+      - '--log.level=info'
     volumes:
       - ./whitebox.yml:/etc/whitebox/whitebox.yml

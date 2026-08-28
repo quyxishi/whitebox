@@ -77,6 +77,13 @@ func main() {
 		parser.FatalIfErrorf(fmt.Errorf("unable to parse cli args due: %v", err))
 	}
 
+	level, err := mlog.ParseLevel(cli.LogLevel)
+	if err != nil {
+		parser.FatalIfErrorf(fmt.Errorf("unable to parse log level due: %v", err))
+	}
+
+	mlog.SetLevel(level)
+
 	cfg, err := cli.LoadConfig()
 	if err != nil {
 		parser.FatalIfErrorf(fmt.Errorf("unable to load config file due: %v", err))
@@ -87,11 +94,7 @@ func main() {
 	// Initialize the default structured logger writing to stdout
 	// This configuration is flexible and can be adapted - e.g, by switching to JSON -
 	// to ensure compatibility with log ingestion and aggregation systems.
-	opts := mlog.ModuleHandlerOptions{
-		SlogOpts: slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		},
-	}
+	opts := mlog.ModuleHandlerOptions{}
 	handler := mlog.NewModuleHandler(os.Stdout, &opts)
 	slog.SetDefault(slog.New(handler))
 
