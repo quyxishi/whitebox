@@ -82,8 +82,15 @@ func ParseSubscriptionURI(json_sub_uri string, params *ParseSubParams) (out stri
 		return "", fmt.Errorf("failed to read body from json subscription uri: %v", err)
 	}
 
+	logFields := []struct {
+		key string
+		val any
+	}{
+		{"log.loglevel", "none"},
+	}
+
 	if params.EnableDebug {
-		debugFields := []struct {
+		logFields = []struct {
 			key string
 			val any
 		}{
@@ -91,17 +98,17 @@ func ParseSubscriptionURI(json_sub_uri string, params *ParseSubParams) (out stri
 			{"log.access", "none"},
 			{"log.error", ""},
 		}
-
-		j := gjson.New(outRaw)
-
-		for _, s := range debugFields {
-			if err := j.Set(s.key, s.val); err != nil {
-				return "", fmt.Errorf("failed to patch config with key '%s': %v", s.key, err)
-			}
-		}
-
-		outRaw = []byte(j.MustToJsonString())
 	}
+
+	j := gjson.New(outRaw)
+
+	for _, s := range logFields {
+		if err := j.Set(s.key, s.val); err != nil {
+			return "", fmt.Errorf("failed to patch config with key '%s': %v", s.key, err)
+		}
+	}
+
+	outRaw = []byte(j.MustToJsonString())
 
 	out = string(outRaw)
 	return out, nil

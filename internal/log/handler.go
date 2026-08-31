@@ -2,12 +2,37 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"log/slog"
 	"path"
 	"strings"
 )
+
+var levelVar = new(slog.LevelVar)
+
+func ParseLevel(name string) (slog.Level, error) {
+	var level slog.Level
+
+	if err := level.UnmarshalText([]byte(strings.TrimSpace(name))); err != nil {
+		return level, fmt.Errorf("unexpected log level: %s", name)
+	}
+
+	return level, nil
+}
+
+func SetLevel(level slog.Level) {
+	levelVar.Set(level)
+}
+
+func Level() slog.Level {
+	return levelVar.Level()
+}
+
+func Enabled(level slog.Level) bool {
+	return level >= levelVar.Level()
+}
 
 type ModuleHandlerOptions struct {
 	SlogOpts slog.HandlerOptions
@@ -47,6 +72,10 @@ func NewModuleHandler(
 	w io.Writer,
 	opts *ModuleHandlerOptions,
 ) *ModuleHandler {
+	if opts.SlogOpts.Level == nil {
+		opts.SlogOpts.Level = levelVar
+	}
+
 	return &ModuleHandler{
 		Handler: slog.NewTextHandler(w, &opts.SlogOpts),
 		l:       log.New(w, "", 0),

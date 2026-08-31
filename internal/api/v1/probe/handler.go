@@ -21,6 +21,7 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/quyxishi/whitebox"
 	"github.com/quyxishi/whitebox/internal/config"
+	mlog "github.com/quyxishi/whitebox/internal/log"
 	"github.com/quyxishi/whitebox/internal/serial"
 	"golang.org/x/net/publicsuffix"
 
@@ -198,10 +199,10 @@ func (h *ProbeHandler) parseXrayConf(ctx *gin.Context, params *ProbeParams) (out
 	switch params.Scheme {
 	case "http://", "https://":
 		slog.Debug("assuming that ctx is json subscription link")
-		config, err = serial.ParseSubscriptionURI(params.Connection, &serial.ParseSubParams{EnableDebug: true})
+		config, err = serial.ParseSubscriptionURI(params.Connection, &serial.ParseSubParams{EnableDebug: mlog.Enabled(slog.LevelDebug)})
 	default:
 		slog.Debug("assuming that ctx is direct vpn connection uri")
-		config, err = serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, params.Connection, &serial.ParseParams{EnableDebug: true})
+		config, err = serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, params.Connection, &serial.ParseParams{EnableDebug: mlog.Enabled(slog.LevelDebug)})
 	}
 
 	if err != nil {
