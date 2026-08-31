@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 
 	v1 "github.com/quyxishi/whitebox/internal/api/v1"
@@ -31,6 +32,7 @@ func (srv *Server) RegisterRoutes() http.Handler {
 
 	probe.RegisterRoutes(&r.RouterGroup, probe.NewProbeHandler(srv.configWrapper))
 	r.NoRoute(v1.NotFoundHandler())
+	pprof.Register(r)
 
 	return r
 }
