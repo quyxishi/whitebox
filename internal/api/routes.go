@@ -3,6 +3,8 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/pprof"
@@ -34,7 +36,10 @@ func (srv *Server) RegisterRoutes() http.Handler {
 	probe.RegisterRoutes(&r.RouterGroup, probe.NewProbeHandler(srv.configWrapper, srv.pool))
 	r.GET("/metrics", gin.WrapH(metrics.Handler()))
 	r.NoRoute(v1.NotFoundHandler())
-	pprof.Register(r)
+
+	if v, _ := strconv.ParseBool(os.Getenv("WHITEBOX_EXPOSE_PPROF")); v {
+		pprof.Register(r)
+	}
 
 	return r
 }
