@@ -13,11 +13,13 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/quyxishi/whitebox"
 	"github.com/quyxishi/whitebox/internal/api"
+	"github.com/quyxishi/whitebox/internal/api/v1/probe"
 	"github.com/quyxishi/whitebox/internal/config"
 	mlog "github.com/quyxishi/whitebox/internal/log"
+	"github.com/quyxishi/whitebox/internal/metrics"
 )
 
-func gracefulShutdown(apiServer *http.Server, done chan bool) {
+func gracefulShutdown(apiServer *http.Server, pool *probe.InstancePool, done chan bool) {
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -36,13 +38,20 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 		slog.Error("Server forced to shutdown", "err", err.Error())
 	}
 
+	// after Shutdown every handler has returned, so each lease is released and
+	// closing the cache is synchronous. worth doing even when Shutdown timed
+	// out: it still closes every instance no probe is holding
+	if err := pool.Close(); err != nil {
+		slog.Error("Failed to close xray instance cache", "err", err.Error())
+	}
+
 	slog.Info("Server exiting")
 
 	// Notify the main goroutine that the shutdown is complete.
 	done <- true
 }
 
-func hotReloadLoop(cli *CLI, configWrapper *config.WhiteboxConfigWrapper) {
+func hotReloadLoop(cli *CLI, configWrapper *config.WhiteboxConfigWrapper, pool *probe.InstancePool) {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGHUP)
 
@@ -57,6 +66,8 @@ func hotReloadLoop(cli *CLI, configWrapper *config.WhiteboxConfigWrapper) {
 		}
 
 		configWrapper.Update(newConfig)
+		pool.SetOptions(newConfig.Xray.InstanceCache.PoolOptions())
+
 		slog.Info("Config updated successfully")
 	}
 }
@@ -106,14 +117,26 @@ func main() {
 
 	// *
 
-	server := api.NewServer(wrapper)
+	// Reusing xray instances across probes is what keeps memory flat: xray-core
+	// keys package-level transport caches on a pointer that core.New allocates
+	// and never evicts, so one instance per probe leaks an entry per probe.
+	pool := probe.NewInstancePool(cfg.Xray.InstanceCache.PoolOptions())
+	metrics.Registry.MustRegister(pool)
+
+	slog.Info("xray instance cache",
+		slog.Bool("enabled", cfg.Xray.InstanceCache.PoolOptions().Enabled),
+		slog.Duration("ttl", cfg.Xray.InstanceCache.TTL),
+		slog.Int("maxEntries", cfg.Xray.InstanceCache.MaxEntries),
+	)
+
+	server := api.NewServer(wrapper, pool)
 
 	// Create a done channel to signal when the shutdown is complete.
 	done := make(chan bool, 1)
 
 	// Run graceful shutdown in a separate goroutine.
-	go gracefulShutdown(server, done)
-	go hotReloadLoop(&cli, wrapper)
+	go gracefulShutdown(server, pool, done)
+	go hotReloadLoop(&cli, wrapper, pool)
 
 	err = server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {

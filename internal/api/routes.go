@@ -11,6 +11,7 @@ import (
 	v1 "github.com/quyxishi/whitebox/internal/api/v1"
 	"github.com/quyxishi/whitebox/internal/api/v1/probe"
 	mlog "github.com/quyxishi/whitebox/internal/log"
+	"github.com/quyxishi/whitebox/internal/metrics"
 )
 
 func (srv *Server) RegisterRoutes() http.Handler {
@@ -30,7 +31,8 @@ func (srv *Server) RegisterRoutes() http.Handler {
 		AllowCredentials: true,
 	}))
 
-	probe.RegisterRoutes(&r.RouterGroup, probe.NewProbeHandler(srv.configWrapper))
+	probe.RegisterRoutes(&r.RouterGroup, probe.NewProbeHandler(srv.configWrapper, srv.pool))
+	r.GET("/metrics", gin.WrapH(metrics.Handler()))
 	r.NoRoute(v1.NotFoundHandler())
 	pprof.Register(r)
 

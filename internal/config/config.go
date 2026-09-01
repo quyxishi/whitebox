@@ -1,6 +1,7 @@
 package config
 
 import (
+	"cmp"
 	"fmt"
 	"log/slog"
 	"os"
@@ -29,11 +30,13 @@ const (
 
 type WhiteboxConfig struct {
 	Scopes map[string]ScopeRecord `yaml:"scopes,omitempty"`
+	Xray   XrayRecord             `yaml:"xray,omitempty"`
 }
 
 func NewWhiteboxConfig() WhiteboxConfig {
 	return WhiteboxConfig{
 		Scopes: map[string]ScopeRecord{DefaultScopeName: NewScopeRecord()},
+		Xray:   NewXrayRecord(),
 	}
 }
 
@@ -58,10 +61,19 @@ func Load(path string) (*WhiteboxConfig, error) {
 			slog.Error("whitebox scope configuration is invalid", "name", name, "err", err)
 			return nil, fmt.Errorf("invalid scope configuration: %v", err)
 		}
+
+		scope.Normalize()
+		config.Scopes[name] = scope
 	}
 
 	if _, ok := config.Scopes[DefaultScopeName]; !ok {
 		config.Scopes[DefaultScopeName] = NewScopeRecord()
+	}
+
+	config.Xray.InstanceCache.Normalize()
+	if err := config.Xray.InstanceCache.Validate(); err != nil {
+		slog.Error("whitebox xray.instance_cache configuration is invalid", "err", err)
+		return nil, fmt.Errorf("invalid xray.instance_cache configuration: %v", err)
 	}
 
 	return &config, nil
@@ -78,6 +90,14 @@ func NewScopeRecord() ScopeRecord {
 		Timeout: 5 * time.Second,
 		Http:    NewHttpRecord(),
 	}
+}
+
+// Normalize applies defaults to fields the yaml omitted.
+func (s *ScopeRecord) Normalize() {
+	// a zero timeout reaches http.Client as "no timeout at all", so a probe
+	// against a black-holed target never returns: it hangs a goroutine and
+	// holds its cached xray instance open forever
+	s.Timeout = cmp.Or(s.Timeout, 5*time.Second)
 }
 
 type HttpRecord struct {
