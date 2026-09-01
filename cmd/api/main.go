@@ -129,7 +129,7 @@ func main() {
 		slog.Int("maxEntries", cfg.Xray.InstanceCache.MaxEntries),
 	)
 
-	server := api.NewServer(wrapper, pool)
+	server := api.NewServer(wrapper, cli.WebListenAddr, pool)
 
 	// Create a done channel to signal when the shutdown is complete.
 	done := make(chan bool, 1)
@@ -137,6 +137,8 @@ func main() {
 	// Run graceful shutdown in a separate goroutine.
 	go gracefulShutdown(server, pool, done)
 	go hotReloadLoop(&cli, wrapper, pool)
+
+	slog.Info("Listening", slog.String("address", server.Addr))
 
 	err = server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {

@@ -8,6 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/joho/godotenv v1.5.1
+	github.com/prometheus/client_model v0.6.2
 	gopkg.in/ini.v1 v1.67.3
 )
 
@@ -26,7 +27,6 @@ require (
 	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/stun/v3 v3.1.6 // indirect
 	github.com/pion/transport/v4 v4.0.2 // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.0 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
