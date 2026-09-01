@@ -1,10 +1,13 @@
 services:
   whitebox:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: rxyvea/whitebox:latest
     container_name: whitebox
     restart: unless-stopped
     ports:
-      - 9116:9116
+      - ${WHITEBOX_PORT:-9116}:9116
     command:
       - '--config.file=/etc/whitebox/whitebox.yml'
       - '--log.level=info'
