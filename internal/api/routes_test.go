@@ -31,7 +31,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	t.Cleanup(func() { metrics.Registry.Unregister(pool) })
 
 	cfg := config.NewWhiteboxConfig()
-	server := NewServer(config.NewConfigWrapper(&cfg), pool)
+	server := NewServer(config.NewConfigWrapper(&cfg), ":9116", pool)
 
 	rec := httptest.NewRecorder()
 	server.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
