@@ -10,6 +10,9 @@
 <div align="center">
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/quyxishi/whitebox)](https://goreportcard.com/report/github.com/quyxishi/whitebox)
+[![Docker Image](https://img.shields.io/docker/v/rxyvea/whitebox?logo=docker&label=docker%20hub&sort=semver)](https://hub.docker.com/r/rxyvea/whitebox)
+[![Image Size](https://img.shields.io/docker/image-size/rxyvea/whitebox/latest?logo=docker&label=image%20size)](https://hub.docker.com/r/rxyvea/whitebox/tags)
+[![License](https://img.shields.io/badge/license-MIT-blue)](/LICENSE.txt)
 
 </div>
 
@@ -20,41 +23,103 @@ The features that distinguish whitebox:
 - **Custom Probe Configuration**: Accepts probe parameters such as connection details, target URLs, response validation rules, and configurable timeouts.
 - **Prometheus Metrics Integration**: Exposes key probe results as Prometheus metrics.
 
-### Prerequisites
-
-- Docker (or Golang ≥1.18)
-
 ## Getting Started
+
+`whitebox` ships a ready-to-run image on Docker Hub: [`rxyvea/whitebox`](https://hub.docker.com/r/rxyvea/whitebox).
+
+```shell
+docker run --rm -d --name whitebox -p 9116:9116 rxyvea/whitebox:latest
+```
+
+That is a complete deployment. Whitebox starts with a built-in default scope and listens on `:9116`.
+
+### Verify
+
+Probe any target through a VPN connection URI. `ctx` is the URL-encoded connection URI, `target` is what to fetch through the resulting tunnel:
+
+```shell
+curl -sG http://localhost:9116/probe \
+  --data-urlencode 'ctx=vless://c9f5228c-8870-47bd-a92f-9b38c7c02b08@1.2.3.4:443?type=tcp&encryption=none&security=reality&pbk=DF-3KL2W4RuNB2HgsEDmLqHLvvTTN4_QfwUCUn8Uhy0&fp=firefox&sni=ce-cdn.icloud-content.com&sid=620352b7&spx=%2F&flow=xtls-rprx-vision' \
+  --data-urlencode 'target=https://google.com'
+```
+
+A Prometheus-style metrics page describing that single probe comes back. Refer for [Reading a probe response](#reading-a-probe-response) below.
+
+The endpoints:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `/probe?ctx=…&target=…&scope=…` | Probe one tunnel. `scope` is optional and defaults to `default`. |
+| `/metrics` | Exporter's own process, Go runtime and xray cache metrics. |
+
+### With a configuration file
+
+Custom scopes, timeouts, request bodies and `fail_if` validation rules live in a YAML file mounted into the container. Grab the annotated example and mount it:
+
+```shell
+curl -O https://raw.githubusercontent.com/quyxishi/whitebox/main/whitebox.yml
+
+docker run --rm -d --name whitebox -p 9116:9116 \
+  -v "$PWD/whitebox.yml:/etc/whitebox/whitebox.yml:ro" \
+  rxyvea/whitebox:latest --config.file=/etc/whitebox/whitebox.yml
+```
+
+Select a scope per probe with `&scope=<scope_name>`. See [Whitebox Configuration](#whitebox-configuration) for what the file can express.
+
+> [!TIP]
+> Config is reloaded in place on **SIGHUP**: `docker kill -s HUP whitebox`.
+
+### With Docker Compose
+
+Drop this into a `docker-compose.yml` next to your `whitebox.yml`:
+
+```yaml
+services:
+  whitebox:
+    image: rxyvea/whitebox:latest
+    container_name: whitebox
+    restart: unless-stopped
+    ports:
+      - ${WHITEBOX_PORT:-9116}:9116
+    command:
+      - '--config.file=/etc/whitebox/whitebox.yml'
+      - '--log.level=info'
+    volumes:
+      - ./whitebox.yml:/etc/whitebox/whitebox.yml
+```
+
+### The whole stack
+
+[`examples/`](/examples) holds a working whitebox + [blackbox](https://github.com/prometheus/blackbox_exporter) + Prometheus + Grafana deployment, already wired together.
 
 ```shell
 git clone -b main https://github.com/quyxishi/whitebox
-cd ./whitebox
+cd whitebox/examples
+docker compose up -d
 ```
 
-#### via `docker-compose.yaml`
+Grafana lands on http://localhost:3000 (`admin`/`admin` by default), Prometheus on http://localhost:9090 — check its `/targets` page for the `whitebox` job. Point [`whitebox-sd-config.yml`](/examples/whitebox-sd-config.yml) at your own connection URIs to get real data, then import [`hemera-dashboard.json`](/examples/hemera-dashboard.json) into Grafana to visualise it.
+
+### Building from source
+
+Requires **Go 1.26+**, or just Docker for the image build:
 
 ```shell
-sudo docker compose up --build -d
+git clone -b main https://github.com/quyxishi/whitebox
+cd whitebox
+
+docker build --tag whitebox .
+docker run --rm -d -p 9116:9116 whitebox
 ```
 
-#### via `Dockerfile`
-
-###### Build
-```shell
-sudo docker build --tag whitebox .
-```
-
-###### Running
-```shell
-sudo docker run --rm -d -p 9116:9116 whitebox
-```
+See [Development](#development) for the local (non-Docker) loop.
 
 ### Logging
 
 Verbosity is controlled by the `--log.level` flag (`-l`) or the `WHITEBOX_LOG_LEVEL` environment variable, one of `debug`, `info` (default), `warn`, `error`:
 
 ```shell
-sudo docker run --rm -d -p 9116:9116 -e WHITEBOX_LOG_LEVEL=warn whitebox
+docker run --rm -d -p 9116:9116 -e WHITEBOX_LOG_LEVEL=warn rxyvea/whitebox:latest
 ```
 
 On `debug`, per-request access logs and verbose `xray-core` tunnel logs are emitted as well; on any higher level both are suppressed.
@@ -69,16 +134,10 @@ sudo docker run --rm -d -p 9200:9200 -e WHITEBOX_LISTEN_ADDRESS=:9200 whitebox
 
 With `docker-compose.yaml` the published host port can be overridden through the `WHITEBOX_PORT` variable, e.g. `WHITEBOX_PORT=9200 sudo docker compose up -d`.
 
-### Checking the results
+### Reading a probe response
 
-After deploying, you can validate VPN tunnel probing by visiting:
-```url
-http://localhost:9116/probe?ctx=<urlencoded_vpn_uri>&target=google.com
-```
+Every probe returns the outcome as Prometheus metrics:
 
-After that, you will see a Prometheus-style metrics page showing the results of the probe.
-
-For example, the output may look like:
 ```md
 # HELP tun_probe_duration_seconds Returns how long the probe took to complete in seconds
 # TYPE tun_probe_duration_seconds gauge
@@ -105,14 +164,53 @@ tun_probe_http_status_code 200
 # HELP tun_probe_http_uncompressed_body_length_bytes Length of uncompressed response body in bytes
 # TYPE tun_probe_http_uncompressed_body_length_bytes gauge
 tun_probe_http_uncompressed_body_length_bytes 17650
+# HELP tun_probe_instance_cached Indicates if the probe reused an already-built xray instance
+# TYPE tun_probe_instance_cached gauge
+tun_probe_instance_cached 1
 # HELP tun_probe_success Displays whether or not the probe over tunnel was a success
 # TYPE tun_probe_success gauge
 tun_probe_success 1
 ```
 
+### Exporter metrics
+
+`/probe` describes a single tunnel. The exporter process itself is exposed separately:
+
+```url
+http://localhost:9116/metrics
+```
+
+This serves the Go runtime and process collectors (`go_memstats_heap_inuse_bytes`, `go_goroutines`, ...) alongside xray instance cache statistics:
+
+| Metric | Description |
+| --- | --- |
+| `whitebox_xray_instances` | Instances currently held by the cache |
+| `whitebox_xray_instances_in_use` | Instances currently leased by an in-flight probe |
+| `whitebox_xray_cache_hits_total` / `_misses_total` | Probes that reused vs. built an instance |
+| `whitebox_xray_cache_evictions_total{reason}` | Evictions by `ttl`, `lru`, `reload` or `shutdown` |
+| `whitebox_xray_cache_overflow_total` | Times `max_entries` was exceeded because every instance was in use |
+| `whitebox_xray_instance_build_duration_seconds` | Cost of constructing and starting an instance |
+| `whitebox_xray_instance_build_failures_total` | Failures to construct or start an instance |
+
+In steady state `whitebox_xray_instances` should settle at the number of distinct connection URIs scraped, and `whitebox_xray_cache_misses_total` should stop increasing.
+
 ## Whitebox Configuration
 
-Refer to the [example configuration](/whitebox.yml) and [code reference](/internal/config/config.go) for implementation details.
+Refer to the [annotated example configuration](/whitebox.yml) and [code reference](/internal/config/config.go) for implementation details.
+
+### Xray instance reuse
+
+Whitebox reuses started xray instances across probes, keyed by the generated xray config, rather than building one per request.
+
+This is required for bounded memory, not merely an optimisation: xray-core's `xhttp`, `grpc` and `hysteria` dialers cache per-connection state in package-level maps keyed by the `*internet.MemoryStreamConfig` pointer that `core.New` allocates, and never delete from them. One instance per probe therefore leaks one permanent entry per probe, which is [issue #10](https://github.com/quyxishi/whitebox/issues/10).
+
+Consequences worth knowing:
+
+- For `xhttp`, whitebox injects `xmux.hMaxRequestTimes: 1` into generated configs so each probe still establishes a fresh transport connection to the VPN server. An explicit `xmux` in the connection URI is always left untouched.
+- For `grpc`, `hysteria2` and `wireguard` there is no equivalent knob, so consecutive probes may share the underlying connection. A dead server still fails the probe; what is not re-exercised every probe is the handshake itself. Set `instance_cache.enabled: false` if per-probe handshake coverage on those transports matters more than flat memory.
+- `raw`/`tcp`, `ws`, `httpupgrade` and `kcp` are unaffected — they have no dialer-level cache and reconnect per probe regardless.
+
+Use `tun_probe_instance_cached` to tell cold probes from warm ones when reading `tun_probe_http_duration_seconds`.
 
 ## Prometheus Configuration
 
@@ -219,6 +317,21 @@ make run
 ###### Live-reload
 ```bash
 make watch
+```
+
+###### Tests
+```bash
+make test
+make test-race
+```
+
+###### Profiling
+
+Set `WHITEBOX_EXPOSE_PPROF=1` to mount `net/http/pprof` under `/debug/pprof`:
+
+```bash
+WHITEBOX_EXPOSE_PPROF=1 make run
+go tool pprof http://localhost:9116/debug/pprof/heap
 ```
 
 ## License

@@ -3,13 +3,17 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 
 	v1 "github.com/quyxishi/whitebox/internal/api/v1"
 	"github.com/quyxishi/whitebox/internal/api/v1/probe"
 	mlog "github.com/quyxishi/whitebox/internal/log"
+	"github.com/quyxishi/whitebox/internal/metrics"
 )
 
 func (srv *Server) RegisterRoutes() http.Handler {
@@ -29,8 +33,13 @@ func (srv *Server) RegisterRoutes() http.Handler {
 		AllowCredentials: true,
 	}))
 
-	probe.RegisterRoutes(&r.RouterGroup, probe.NewProbeHandler(srv.configWrapper))
+	probe.RegisterRoutes(&r.RouterGroup, probe.NewProbeHandler(srv.configWrapper, srv.pool))
+	r.GET("/metrics", gin.WrapH(metrics.Handler()))
 	r.NoRoute(v1.NotFoundHandler())
+
+	if v, _ := strconv.ParseBool(os.Getenv("WHITEBOX_EXPOSE_PPROF")); v {
+		pprof.Register(r)
+	}
 
 	return r
 }

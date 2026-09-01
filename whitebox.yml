@@ -4,6 +4,25 @@
 # This YAML file configures monitoring scopes for external VPN services.
 # Each scope defines an HTTP probe with validation rules.
 
+xray:
+  # Reuse of started xray instances across probes.
+  #
+  # This is what keeps memory flat. xray-core's xhttp, grpc and hysteria
+  # transports cache per-connection state in package-level maps keyed by a
+  # pointer that is allocated per instance, and never evict from them, so
+  # building one instance per probe leaks a permanent entry per probe.
+  instance_cache:
+    enabled: true
+
+    # Idle time after which an unused instance is closed. A value comfortably
+    # above the Prometheus scrape interval keeps steady-state targets warm
+    ttl: 10m
+
+    # Maximum cached instances, roughly "how many distinct connection URIs are
+    # scraped". Kept modest because a cached wireguard/amneziawg instance owns
+    # a live gVisor netstack. In-flight probes are never evicted to satisfy it
+    max_entries: 64
+
 scopes:
   # Default monitoring scope (fallback)
   default:

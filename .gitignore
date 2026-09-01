@@ -32,3 +32,6 @@ main
 # OS X generated file
 .DS_Store
 
+# pprof profiles captured for debugging
+heap-*
+*.pprof

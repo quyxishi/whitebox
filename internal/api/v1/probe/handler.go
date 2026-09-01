@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -149,11 +150,13 @@ func matchStatusCodes(actual int, expecting []string) bool {
 
 type ProbeHandler struct {
 	configWrapper *config.WhiteboxConfigWrapper
+	pool          *InstancePool
 }
 
-func NewProbeHandler(wrapper *config.WhiteboxConfigWrapper) *ProbeHandler {
+func NewProbeHandler(wrapper *config.WhiteboxConfigWrapper, pool *InstancePool) *ProbeHandler {
 	return &ProbeHandler{
 		configWrapper: wrapper,
+		pool:          pool,
 	}
 }
 
@@ -193,30 +196,27 @@ func (h *ProbeHandler) parseProbeParams(ctx *gin.Context, cfg *config.WhiteboxCo
 	return out, true
 }
 
-func (h *ProbeHandler) parseXrayConf(ctx *gin.Context, params *ProbeParams) (out *core.Config, ok bool) {
-	var config string
+// buildXrayConf generates the xray-core config json for this probe.
+//
+// It stops short of core.LoadConfig so the json itself can key the instance
+// cache; loading it into protobufs is deferred to a cache miss
+func (h *ProbeHandler) buildXrayConf(ctx *gin.Context, params *ProbeParams) (conf string, ok bool) {
 	var err error
 	switch params.Scheme {
 	case "http://", "https://":
 		slog.Debug("assuming that ctx is json subscription link")
-		config, err = serial.ParseSubscriptionURI(params.Connection, &serial.ParseSubParams{EnableDebug: mlog.Enabled(slog.LevelDebug)})
+		conf, err = serial.ParseSubscriptionURI(params.Connection, &serial.ParseSubParams{EnableDebug: mlog.Enabled(slog.LevelDebug)})
 	default:
 		slog.Debug("assuming that ctx is direct vpn connection uri")
-		config, err = serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, params.Connection, &serial.ParseParams{EnableDebug: mlog.Enabled(slog.LevelDebug)})
+		conf, err = serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, params.Connection, &serial.ParseParams{EnableDebug: mlog.Enabled(slog.LevelDebug)})
 	}
 
 	if err != nil {
 		ctx.String(http.StatusBadRequest, "Unable to parse uri-based config for xray-core due: %v", err)
-		return out, false
+		return "", false
 	}
 
-	out, err = core.LoadConfig("json", bytes.NewReader([]byte(config)))
-	if err != nil {
-		ctx.String(http.StatusInternalServerError, "Unable to load xray config: %v", err)
-		return out, false
-	}
-
-	return out, true
+	return conf, true
 }
 
 func (h *ProbeHandler) Probe(ctx *gin.Context) {
@@ -232,7 +232,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		return
 	}
 
-	xrayConf, ok := h.parseXrayConf(ctx, &params)
+	xrayConf, ok := h.buildXrayConf(ctx, &params)
 	if !ok {
 		return
 	}
@@ -291,6 +291,13 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		Help: "Response HTTP status code",
 	})
 
+	// a probe over a reused instance has a structurally different connect phase
+	// from a cold one, so the duration series is only interpretable alongside it
+	probeInstanceCachedGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tun_probe_instance_cached",
+		Help: "Indicates if the probe reused an already-built xray instance",
+	})
+
 	for _, lv := range []string{"resolve", "connect", "tls", "processing", "transfer"} {
 		probeDurationGaugeVec.WithLabelValues(lv)
 	}
@@ -336,6 +343,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	registry.MustRegister(probeBodyUncompressedLengthGauge)
 	registry.MustRegister(probeRedirectsGauge)
 	registry.MustRegister(probeIsSslGauge)
+	registry.MustRegister(probeInstanceCachedGauge)
 
 	// *
 
@@ -352,39 +360,51 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	// *
 
-	instance, err := core.New(xrayConf)
+	lease, err := h.acquireInstance(ctx.Request.Context(), xrayConf)
 	if err != nil {
-		slog.Error("failed to init xray instance", "err", err)
-		ctx.String(http.StatusInternalServerError, "Unable to init xray instance: %s", err.Error())
-		return
-	}
-	if err := instance.Start(); err != nil {
-		slog.Error("failed to start xray instance", "err", err)
-		ctx.String(http.StatusInternalServerError, "Unable to start xray instance: %s", err.Error())
-		return
-	}
-	defer func() {
-		if err := instance.Close(); err != nil {
-			slog.Error("failed to close xray instance", "err", err)
+		switch {
+		case errors.Is(err, ErrLoadConfig):
+			slog.Error("failed to load xray config", "err", err)
+			ctx.String(http.StatusInternalServerError, "Unable to load xray config: %s", err.Error())
+		case errors.Is(err, ErrNewInstance):
+			slog.Error("failed to init xray instance", "err", err)
+			ctx.String(http.StatusInternalServerError, "Unable to init xray instance: %s", err.Error())
+		default:
+			slog.Error("failed to start xray instance", "err", err)
+			ctx.String(http.StatusInternalServerError, "Unable to start xray instance: %s", err.Error())
 		}
-	}()
+		return
+	}
+	// registered before the transport's own cleanup so that, unwinding LIFO, no
+	// idle connection can outlive the instance it was dialed through
+	defer lease.Release()
+
+	instance := lease.Value()
+	probeInstanceCachedGauge.Set(float64(Bool2int(lease.Cached())))
 
 	// *
 
 	redirectCounter := RedirectCounter{Max: scope.Http.MaxRedirects}
 
-	client := &http.Client{
-		Timeout: scope.Timeout,
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				dest, err := net.ParseDestination(network + ":" + addr)
-				if err != nil {
-					return nil, err
-				}
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dest, err := net.ParseDestination(network + ":" + addr)
+			if err != nil {
+				return nil, err
+			}
 
-				return core.Dial(ctx, instance, dest)
-			},
+			return core.Dial(ctx, instance, dest)
 		},
+		MaxIdleConns: 4,
+		// a backstop only; CloseIdleConnections below is the real reaper. left
+		// at its zero value, idle connections over the tunnel are never reaped
+		IdleConnTimeout: 10 * time.Second,
+	}
+	defer transport.CloseIdleConnections()
+
+	client := &http.Client{
+		Timeout:       scope.Timeout,
+		Transport:     transport,
 		CheckRedirect: redirectCounter.CheckRedirect,
 	}
 
@@ -444,7 +464,13 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		req.Header[k] = []string{v}
 	}
 
-	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	// derive from the gin request so a client-side scrape timeout actually
+	// aborts the probe: http.Server.WriteTimeout does not stop the handler
+	// goroutine, and a probe that never returns holds its instance lease open
+	reqCtx, cancel := context.WithTimeout(ctx.Request.Context(), scope.Timeout)
+	defer cancel()
+
+	req = req.WithContext(httptrace.WithClientTrace(reqCtx, trace))
 
 	// *
 

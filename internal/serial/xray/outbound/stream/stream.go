@@ -177,6 +177,18 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 				return StreamConfig{}, fmt.Errorf("query=extra unmarshal failed > contains not valid json data, required for xhttpSettings: %v", err)
 			}
 		}
+
+		// whitebox is a prober, and xray instances are now reused across probes,
+		// so an xmux client would otherwise be kept for xray's default 600-900
+		// requests / ~30min - hiding handshake-level regressions (rotated reality
+		// keys, expired certs, dns changes) for that whole window.
+		//
+		// retiring the client after a single request makes the next probe build
+		// a fresh transport connection, while the dialer's cache stays at one
+		// entry per config. an explicit xmux from the uri always wins
+		if _, ok := out.XhttpSettings.Extra["xmux"]; !ok {
+			out.XhttpSettings.Extra["xmux"] = map[string]any{"hMaxRequestTimes": 1}
+		}
 	}
 
 	switch out.Security {

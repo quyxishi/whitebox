@@ -1,5 +1,8 @@
 services:
   whitebox:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: rxyvea/whitebox:latest
     container_name: whitebox
     restart: unless-stopped
