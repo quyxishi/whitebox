@@ -57,6 +57,8 @@ Verbosity is controlled by the `--log.level` flag (`-l`) or the `WHITEBOX_LOG_LE
 sudo docker run --rm -d -p 9116:9116 -e WHITEBOX_LOG_LEVEL=warn whitebox
 ```
 
+On `debug`, per-request access logs and verbose `xray-core` tunnel logs are emitted as well; on any higher level both are suppressed.
+
 ### Listen address
 
 By default whitebox binds to `:9116`. Use the `--web.listen-address` flag or the `WHITEBOX_LISTEN_ADDRESS` environment variable to change the port (or the interface), accepting either `[host]:port` or a bare port:
@@ -66,8 +68,6 @@ sudo docker run --rm -d -p 9200:9200 -e WHITEBOX_LISTEN_ADDRESS=:9200 whitebox
 ```
 
 With `docker-compose.yaml` the published host port can be overridden through the `WHITEBOX_PORT` variable, e.g. `WHITEBOX_PORT=9200 sudo docker compose up -d`.
-
-On `debug`, per-request access logs and verbose `xray-core` tunnel logs are emitted as well; on any higher level both are suppressed.
 
 ### Checking the results
 
