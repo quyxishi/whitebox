@@ -8,6 +8,7 @@ import (
 type CLI struct {
 	Version    kong.VersionFlag `short:"v" help:"Print version information and exit."`
 	ConfigPath string           `name:"config.file" short:"c" help:"Path to whitebox config file."`
+	ListenAddr string           `name:"web.listen-address" env:"WHITEBOX_LISTEN_ADDRESS" default:":9116" help:"Address to listen on for the exporter, either [host]:port or a bare port."`
 	LogLevel   string           `name:"log.level" short:"l" env:"WHITEBOX_LOG_LEVEL" enum:"debug,info,warn,error" default:"info" help:"Only log messages with the given severity or above. One of: [debug, info, warn, error]."`
 }
 
