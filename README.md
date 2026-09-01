@@ -95,14 +95,53 @@ tun_probe_http_status_code 200
 # HELP tun_probe_http_uncompressed_body_length_bytes Length of uncompressed response body in bytes
 # TYPE tun_probe_http_uncompressed_body_length_bytes gauge
 tun_probe_http_uncompressed_body_length_bytes 17650
+# HELP tun_probe_instance_cached Indicates if the probe reused an already-built xray instance
+# TYPE tun_probe_instance_cached gauge
+tun_probe_instance_cached 1
 # HELP tun_probe_success Displays whether or not the probe over tunnel was a success
 # TYPE tun_probe_success gauge
 tun_probe_success 1
 ```
 
+### Exporter metrics
+
+`/probe` describes a single tunnel. The exporter process itself is exposed separately:
+
+```url
+http://localhost:9116/metrics
+```
+
+This serves the Go runtime and process collectors (`go_memstats_heap_inuse_bytes`, `go_goroutines`, ...) alongside xray instance cache statistics:
+
+| Metric | Description |
+| --- | --- |
+| `whitebox_xray_instances` | Instances currently held by the cache |
+| `whitebox_xray_instances_in_use` | Instances currently leased by an in-flight probe |
+| `whitebox_xray_cache_hits_total` / `_misses_total` | Probes that reused vs. built an instance |
+| `whitebox_xray_cache_evictions_total{reason}` | Evictions by `ttl`, `lru`, `reload` or `shutdown` |
+| `whitebox_xray_cache_overflow_total` | Times `max_entries` was exceeded because every instance was in use |
+| `whitebox_xray_instance_build_duration_seconds` | Cost of constructing and starting an instance |
+| `whitebox_xray_instance_build_failures_total` | Failures to construct or start an instance |
+
+In steady state `whitebox_xray_instances` should settle at the number of distinct connection URIs scraped, and `whitebox_xray_cache_misses_total` should stop increasing.
+
 ## Whitebox Configuration
 
 Refer to the [example configuration](/whitebox.yml) and [code reference](/internal/config/config.go) for implementation details.
+
+### Xray instance reuse
+
+Whitebox reuses started xray instances across probes, keyed by the generated xray config, rather than building one per request.
+
+This is required for bounded memory, not merely an optimisation: xray-core's `xhttp`, `grpc` and `hysteria` dialers cache per-connection state in package-level maps keyed by the `*internet.MemoryStreamConfig` pointer that `core.New` allocates, and never delete from them. One instance per probe therefore leaks one permanent entry per probe, which is [issue #10](https://github.com/quyxishi/whitebox/issues/10).
+
+Consequences worth knowing:
+
+- For `xhttp`, whitebox injects `xmux.hMaxRequestTimes: 1` into generated configs so each probe still establishes a fresh transport connection to the VPN server. An explicit `xmux` in the connection URI is always left untouched.
+- For `grpc`, `hysteria2` and `wireguard` there is no equivalent knob, so consecutive probes may share the underlying connection. A dead server still fails the probe; what is not re-exercised every probe is the handshake itself. Set `instance_cache.enabled: false` if per-probe handshake coverage on those transports matters more than flat memory.
+- `raw`/`tcp`, `ws`, `httpupgrade` and `kcp` are unaffected — they have no dialer-level cache and reconnect per probe regardless.
+
+Use `tun_probe_instance_cached` to tell cold probes from warm ones when reading `tun_probe_http_duration_seconds`.
 
 ## Prometheus Configuration
 
