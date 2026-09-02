@@ -447,3 +447,63 @@ func TestConcurrentDistinctKeys(t *testing.T) {
 		t.Errorf("closes = %d, want %d (every evicted instance must be closed)", got, want)
 	}
 }
+
+// TestAcquireUncached asserts the opt-out path builds per acquire and closes on
+// release even with the cache on, and never lets the value into the cache
+func TestAcquireUncached(t *testing.T) {
+	p, _ := newTestPool(t, Options{Enabled: true})
+	b := &builder{}
+
+	const n = 5
+	for range n {
+		lease, err := p.AcquireUncached(context.Background(), b.build)
+		if err != nil {
+			t.Fatalf("AcquireUncached: %v", err)
+		}
+		lease.Release()
+	}
+
+	if got := b.count(); got != n {
+		t.Errorf("builds = %d, want %d", got, n)
+	}
+	if got := b.closedCount(); got != n {
+		t.Errorf("closes = %d, want %d", got, n)
+	}
+
+	s := p.Stats()
+	if s.Size != 0 {
+		t.Errorf("Size = %d, want 0", s.Size)
+	}
+	if s.Hits != 0 {
+		t.Errorf("Hits = %d, want 0", s.Hits)
+	}
+	if s.Misses != n {
+		t.Errorf("Misses = %d, want %d", s.Misses, n)
+	}
+
+	// the pooled path is untouched by it
+	acquire(t, p, "k", b).Release()
+	acquire(t, p, "k", b).Release()
+
+	if got := b.count(); got != n+1 {
+		t.Errorf("builds after two pooled acquires = %d, want %d", got, n+1)
+	}
+}
+
+// TestAcquireUncachedAfterClose asserts the opt-out path refuses to build once
+// the pool is shut down, like Acquire does
+func TestAcquireUncachedAfterClose(t *testing.T) {
+	p := New[*fakeInstance](Options{Enabled: true})
+	b := &builder{}
+
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	if _, err := p.AcquireUncached(context.Background(), b.build); !errors.Is(err, ErrClosed) {
+		t.Errorf("AcquireUncached after Close = %v, want ErrClosed", err)
+	}
+	if got := b.count(); got != 0 {
+		t.Errorf("builds = %d, want 0", got)
+	}
+}

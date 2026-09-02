@@ -26,8 +26,8 @@ type InstanceCacheRecord struct {
 
 	// Maximum cached instances. Fallbacks to 64.
 	//
-	// Kept modest on purpose: a cached wireguard/amneziawg instance owns a live
-	// gVisor netstack, so a large cap trades one memory problem for another
+	// Kept modest on purpose: every entry holds a started instance and the
+	// connections it opened, so a large cap trades one memory problem for another
 	MaxEntries int `yaml:"max_entries,omitempty"`
 }
 

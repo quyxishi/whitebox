@@ -19,8 +19,11 @@ xray:
     ttl: 10m
 
     # Maximum cached instances, roughly "how many distinct connection URIs are
-    # scraped". Kept modest because a cached wireguard/amneziawg instance owns
-    # a live gVisor netstack. In-flight probes are never evicted to satisfy it
+    # scraped". Kept modest because each one holds a started xray instance and
+    # its open connections. In-flight probes are never evicted to satisfy it.
+    #
+    # Wireguard and amneziawg outbounds are never cached at all - their tunnel
+    # device is bound to the context of the probe that built it
     max_entries: 64
 
 scopes:

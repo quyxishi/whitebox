@@ -192,7 +192,7 @@ This serves the Go runtime and process collectors (`go_memstats_heap_inuse_bytes
 | `whitebox_xray_instance_build_duration_seconds` | Cost of constructing and starting an instance |
 | `whitebox_xray_instance_build_failures_total` | Failures to construct or start an instance |
 
-In steady state `whitebox_xray_instances` should settle at the number of distinct connection URIs scraped, and `whitebox_xray_cache_misses_total` should stop increasing.
+In steady state `whitebox_xray_instances` should settle at the number of distinct cacheable connection URIs scraped, and `whitebox_xray_cache_misses_total` should stop increasing. Wireguard targets are the exception: they are never cached, so each of their probes counts as a miss.
 
 ## Whitebox Configuration
 
@@ -207,7 +207,8 @@ This is required for bounded memory, not merely an optimisation: xray-core's `xh
 Consequences worth knowing:
 
 - For `xhttp`, whitebox injects `xmux.hMaxRequestTimes: 1` into generated configs so each probe still establishes a fresh transport connection to the VPN server. An explicit `xmux` in the connection URI is always left untouched.
-- For `grpc`, `hysteria2` and `wireguard` there is no equivalent knob, so consecutive probes may share the underlying connection. A dead server still fails the probe; what is not re-exercised every probe is the handshake itself. Set `instance_cache.enabled: false` if per-probe handshake coverage on those transports matters more than flat memory.
+- For `grpc` and `hysteria2` there is no equivalent knob, so consecutive probes may share the underlying connection. A dead server still fails the probe; what is not re-exercised every probe is the handshake itself. Set `instance_cache.enabled: false` if per-probe handshake coverage on those transports matters more than flat memory.
+- `wireguard` and `awg` outbounds are never reused, whatever `instance_cache.enabled` says, so `tun_probe_instance_cached` is always `0` for them. xray-core creates the tunnel device lazily, on the first proxied request, and the closure that opens the outer UDP socket captures that request's context; a reused instance would stay bound to a context that was cancelled when the probe which built it returned, and every later probe over it would fail. Nothing is lost by rebuilding them: they have no dialer-level cache to leak, and excluding them also stops a live gVisor netstack being held for a whole `ttl`.
 - `raw`/`tcp`, `ws`, `httpupgrade` and `kcp` are unaffected — they have no dialer-level cache and reconnect per probe regardless.
 
 Use `tun_probe_instance_cached` to tell cold probes from warm ones when reading `tun_probe_http_duration_seconds`.

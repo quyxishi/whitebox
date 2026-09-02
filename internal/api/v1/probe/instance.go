@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -64,9 +65,47 @@ func newXrayInstance(conf string) (*core.Instance, error) {
 	return instance, nil
 }
 
+// wireguardProtocols are the xray-core outbound protocol names that stand up a
+// wireguard tunnel. The awg scheme is serialized as "wireguard" too, its
+// obfuscation parameters riding along in the settings; the other spellings are
+// listed because a json subscription writes the protocol name itself
+var wireguardProtocols = map[string]struct{}{
+	"wireguard": {},
+	"amneziawg": {},
+	"awg":       {},
+}
+
+func poolable(conf string) bool {
+	var parsed struct {
+		Outbounds []struct {
+			Protocol string `json:"protocol"`
+		} `json:"outbounds"`
+	}
+
+	if err := json.Unmarshal([]byte(conf), &parsed); err != nil {
+		// unreadable json is about to fail in core.LoadConfig anyway, and there
+		// is nothing worth caching behind it
+		return false
+	}
+
+	for _, out := range parsed.Outbounds {
+		if _, found := wireguardProtocols[strings.ToLower(strings.TrimSpace(out.Protocol))]; found {
+			return false
+		}
+	}
+
+	return true
+}
+
 // acquireInstance leases a started instance for the given generated config
 func (h *ProbeHandler) acquireInstance(ctx context.Context, conf string) (*xraypool.Lease[*core.Instance], error) {
-	return h.pool.Acquire(ctx, instanceKey(conf), func(context.Context) (*core.Instance, error) {
+	build := func(context.Context) (*core.Instance, error) {
 		return newXrayInstance(conf)
-	})
+	}
+
+	if !poolable(conf) {
+		return h.pool.AcquireUncached(ctx, build)
+	}
+
+	return h.pool.Acquire(ctx, instanceKey(conf), build)
 }
