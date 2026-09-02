@@ -31,8 +31,8 @@ var ErrClosed = errors.New("xraypool: pool is closed")
 const (
 	DefaultTTL = 10 * time.Minute
 
-	// DefaultMaxEntries is deliberately modest: a cached wireguard/amneziawg
-	// instance owns a live gVisor netstack, so a large cap is its own memory
+	// DefaultMaxEntries is deliberately modest: every entry holds a started
+	// instance and whatever it allocated, so a large cap is its own memory
 	// problem
 	DefaultMaxEntries = 64
 
@@ -170,15 +170,7 @@ func (p *Pool[T]) Acquire(ctx context.Context, key string, build func(context.Co
 		p.misses++
 		p.mu.Unlock()
 
-		v, err := p.build(ctx, build)
-		if err != nil {
-			return nil, err
-		}
-
-		// a detached entry holding a single reference: Release closes it, so the
-		// call site does not care whether the pool is enabled
-		e := &entry[T]{ready: closedChan(), val: v, built: true, refs: 1, detached: true}
-		return &Lease[T]{p: p, e: e}, nil
+		return p.acquireDetached(ctx, build)
 	}
 
 	if e, found := p.entries[key]; found {
@@ -231,6 +223,41 @@ func (p *Pool[T]) Acquire(ctx context.Context, key string, build func(context.Co
 		return nil, err
 	}
 
+	return &Lease[T]{p: p, e: e}, nil
+}
+
+// AcquireUncached builds a value that never enters the cache, whatever the
+// pool's options say, and closes it on Release.
+//
+// It exists for values that must not outlive the request that built them. The
+// returned lease behaves exactly like a pooled one, so call sites differ only
+// in which method they call
+func (p *Pool[T]) AcquireUncached(ctx context.Context, build func(context.Context) (T, error)) (*Lease[T], error) {
+	p.mu.Lock()
+
+	if p.closed {
+		p.mu.Unlock()
+		return nil, ErrClosed
+	}
+
+	// counted as a miss like the disabled path is, so misses stays a count of
+	// values actually constructed
+	p.misses++
+	p.mu.Unlock()
+
+	return p.acquireDetached(ctx, build)
+}
+
+// acquireDetached builds a value outside the map and the LRU list. The lease
+// owns what it built - it holds the only reference, so Release closes it - and
+// so the call site does not care how the value was obtained
+func (p *Pool[T]) acquireDetached(ctx context.Context, build func(context.Context) (T, error)) (*Lease[T], error) {
+	v, err := p.build(ctx, build)
+	if err != nil {
+		return nil, err
+	}
+
+	e := &entry[T]{ready: closedChan(), val: v, built: true, refs: 1, detached: true}
 	return &Lease[T]{p: p, e: e}, nil
 }
 
