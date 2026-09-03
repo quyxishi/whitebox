@@ -207,11 +207,53 @@ This is required for bounded memory, not merely an optimisation: xray-core's `xh
 Consequences worth knowing:
 
 - For `xhttp`, whitebox injects `xmux.hMaxRequestTimes: 1` into generated configs so each probe still establishes a fresh transport connection to the VPN server. An explicit `xmux` in the connection URI is always left untouched.
-- For `grpc` and `hysteria2` there is no equivalent knob, so consecutive probes may share the underlying connection. A dead server still fails the probe; what is not re-exercised every probe is the handshake itself. Set `instance_cache.enabled: false` if per-probe handshake coverage on those transports matters more than flat memory.
+- For `grpc` and `hysteria2` there is no equivalent knob, so consecutive probes may share the underlying connection. A dead server still fails the probe; what is not re-exercised every probe is the handshake itself. Set `instance_cache.enabled: false` if per-probe handshake coverage on those transports matters more than flat memory — see [Container memory limits](#container-memory-limits) before doing so.
 - `wireguard` and `awg` outbounds are never reused, whatever `instance_cache.enabled` says, so `tun_probe_instance_cached` is always `0` for them. xray-core creates the tunnel device lazily, on the first proxied request, and the closure that opens the outer UDP socket captures that request's context; a reused instance would stay bound to a context that was cancelled when the probe which built it returned, and every later probe over it would fail. Nothing is lost by rebuilding them: they have no dialer-level cache to leak, and excluding them also stops a live gVisor netstack being held for a whole `ttl`.
 - `raw`/`tcp`, `ws`, `httpupgrade` and `kcp` are unaffected — they have no dialer-level cache and reconnect per probe regardless.
 
 Use `tun_probe_instance_cached` to tell cold probes from warm ones when reading `tun_probe_http_duration_seconds`.
+
+### Container memory limits
+
+The cache above is what keeps the heap bounded. With `instance_cache.enabled: false` or on a build predating the cache, the dialer-map leak from [issue #10](https://github.com/quyxishi/whitebox/issues/10) is back in play, and, left alone, the process grows until the host runs out of memory.
+
+A memory cap that still permits swap is worse than no cap at all: the process thrashes inside its own cgroup instead of being killed. In one deployment `memory.max` was hit 8.7M times with 420M major faults and 1.9 TB read from disk, while `oom_kill` stayed at `0`. That disk I/O degraded everything else on the machine, the probes included, so the monitoring reported a fleet-wide outage that did not exist.
+
+**Cap memory** and **forbid swap**, so the kernel OOM-kills the container and Docker restarts it:
+
+```shell
+docker run -d --name whitebox -p 9116:9116 \
+  --restart unless-stopped \
+  --memory 512m --memory-swap 512m \
+  rxyvea/whitebox:latest
+```
+
+`--memory-swap` is the combined memory + swap ceiling, so setting it equal to `--memory` leaves no swap at all. The same pair under Compose:
+
+```yaml
+services:
+  whitebox:
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+```
+
+Expect the container to be OOM-killed and restarted periodically (roughly every three days at a 512m cap) instead of dragging the host down.
+
+Verify against the cgroup rather than the flags. The image is distroless, so read it from the host instead of through `docker exec`:
+
+```shell
+pid=$(docker inspect -f '{{.State.Pid}}' whitebox)
+cgroup=/sys/fs/cgroup$(cut -d: -f3 /proc/$pid/cgroup)
+
+cat "$cgroup/memory.swap.max"  # 0
+cat "$cgroup/memory.events"    # oom_kill should climb; max should not run away
+```
+
+In cgroup v2 a `memory.swap.max` of `0` means swap is forbidden.
+
+> [!WARNING]
+> `docker update` does not apply `--memory-swap` to a running container's cgroup. `docker inspect` will happily report the new swap limit while the cgroup still permits swap; it takes a restart or a recreate to actually apply.
 
 ## Prometheus Configuration
 
