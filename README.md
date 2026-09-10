@@ -9,9 +9,8 @@
 
 <div align="center">
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/quyxishi/whitebox)](https://goreportcard.com/report/github.com/quyxishi/whitebox)
+[![Xray-Core Version](https://img.shields.io/static/v1?label=xray-core%20version&message=v26.6.27&color=blue&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJsb2dvIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeD0iMHB4IiB5PSIwcHgiIHZpZXdCb3g9IjAgMCAxMDAwIDEwMDAiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDEwMDAgMTAwMDsiIHhtbDpzcGFjZT0icHJlc2VydmUiPgogIDxwb2x5Z29uIGZpbGw9IiNkZmRmZDYiIHBvaW50cz0iNTMwLDUzMCA5MDAsNTMwIDY1MCw2NTAgNTMwLDEwMDAgIi8%2BCiAgPHBvbHlnb24gZmlsbD0iI2RmZGZkNiIgcG9pbnRzPSI0NzAsNTMwIDQ3MCw5MDAgMzUwLDY1MCAwLDUzMCAiLz4KICA8cG9seWdvbiBmaWxsPSIjZGZkZmQ2IiBwb2ludHM9IjUzMCw0NzAgNTMwLDEwMCA2NTAsMzUwIDEwMDAsNDcwICIvPgogIDxwb2x5Z29uIGZpbGw9IiNkZmRmZDYiIHBvaW50cz0iNDcwLDQ3MCAxMDAsNDcwIDM1MCwzNTAgNDcwLDAgIi8%2BCjwvc3ZnPgo%3D)](/go.mod)
 [![Docker Image](https://img.shields.io/docker/v/rxyvea/whitebox?logo=docker&label=docker%20hub&sort=semver)](https://hub.docker.com/r/rxyvea/whitebox)
-[![Image Size](https://img.shields.io/docker/image-size/rxyvea/whitebox/latest?logo=docker&label=image%20size)](https://hub.docker.com/r/rxyvea/whitebox/tags)
 [![License](https://img.shields.io/badge/license-MIT-blue)](/LICENSE.txt)
 
 </div>
