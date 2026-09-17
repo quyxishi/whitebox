@@ -3,19 +3,7 @@ package serial_test
 import (
 	"strings"
 	"testing"
-
-	"github.com/quyxishi/whitebox/internal/serial"
 )
-
-func parseURI(t *testing.T, uri string) string {
-	t.Helper()
-
-	out, err := serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, uri, &serial.ParseParams{})
-	if err != nil {
-		t.Fatalf("ParseURI: %v", err)
-	}
-	return out
-}
 
 // TestXmuxRetiredPerRequest asserts xhttp configs retire their transport
 // connection after one request.
@@ -31,7 +19,7 @@ func TestXmuxRetiredPerRequest(t *testing.T) {
 		"shadowsocks":    URI_SHADOWSOCKS_XHTTP_TLS,
 	} {
 		t.Run(name, func(t *testing.T) {
-			if out := parseURI(t, uri); !strings.Contains(out, `"hMaxRequestTimes":1`) {
+			if out := xrayParse(t, uri); !strings.Contains(out, `"hMaxRequestTimes":1`) {
 				t.Errorf("generated config is missing the injected xmux:\n%s", out)
 			}
 		})
@@ -41,7 +29,7 @@ func TestXmuxRetiredPerRequest(t *testing.T) {
 // TestXmuxFromURIWins asserts an explicit xmux in the connection uri is left
 // untouched, so an operator can still opt into connection reuse
 func TestXmuxFromURIWins(t *testing.T) {
-	out := parseURI(t, URI_VLESS_XHTTP_TLS_EXTRA)
+	out := xrayParse(t, URI_VLESS_XHTTP_TLS_EXTRA)
 
 	if strings.Contains(out, `"hMaxRequestTimes":1`) {
 		t.Errorf("injected xmux overrode the one supplied in the uri:\n%s", out)
@@ -61,7 +49,7 @@ func TestXmuxOnlyForXhttp(t *testing.T) {
 		"kcp":         URI_VMESS_MKCP,
 	} {
 		t.Run(name, func(t *testing.T) {
-			if out := parseURI(t, uri); strings.Contains(out, `"xmux"`) {
+			if out := xrayParse(t, uri); strings.Contains(out, `"xmux"`) {
 				t.Errorf("xmux leaked into a non-xhttp config:\n%s", out)
 			}
 		})

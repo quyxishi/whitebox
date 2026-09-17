@@ -193,10 +193,15 @@ func ParseStreamConfig(con *extra.ConnectionExtra) (out StreamConfig, err error)
 
 	switch out.Security {
 	case SECURITY_TLS:
+		var alpn []string
+		if v := query.Get("alpn"); v != "" {
+			alpn = strings.Split(v, ",")
+		}
+
 		out.TlsSettings = &TlsConfig{
 			AllowInsecure: query.Get("allowInsecure") == "1",
 			SNI:           query.Get("sni"),
-			Alpn:          strings.Split(query.Get("alpn"), ","),
+			Alpn:          alpn,
 			Fingerprint:   query.Get("fp"),
 			EchConfigList: query.Get("ech"),
 		}

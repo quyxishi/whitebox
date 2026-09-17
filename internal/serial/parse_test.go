@@ -2,6 +2,7 @@ package serial_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/quyxishi/whitebox/internal/serial"
@@ -17,6 +18,7 @@ const (
 	URI_VMESS_XHTTP_TLS       string = "vmess://ewogICJ2IjogIjIiLAogICJwcyI6ICJvMm9qeG8yeiIsCiAgImFkZCI6ICIxLjIuMy40IiwKICAicG9ydCI6IDQ0MywKICAiaWQiOiAiYjc1MjJjODktMTgxMC00N2U2LWExMDMtYjQyNTI4NmRhM2JjIiwKICAic2N5IjogImF1dG8iLAogICJuZXQiOiAieGh0dHAiLAogICJ0bHMiOiAidGxzIiwKICAicGF0aCI6ICIvIiwKICAiaG9zdCI6ICJoIiwKICAidHlwZSI6ICJhdXRvIiwKICAic25pIjogImdvb2dsZS5jb20iLAogICJmcCI6ICJjaHJvbWUiLAogICJhbHBuIjogImgyLGh0dHAvMS4xIgp9"
 
 	URI_VLESS_RAW_REALITY     string = "vless://c9f5228c-8870-47bd-a92f-9b38c7c02b08@1.2.3.4:443?type=tcp&encryption=none&security=reality&pbk=DF-3KL1W4RuNB2HsgGDwLqHLvvTTN4_QfwUCUn8Uhy0&fp=firefox&sni=google.com&sid=dc8cc0b47450f9&spx=%2F&flow=xtls-rprx-vision#ring0-raii-idx0"
+	URI_VLESS_RAW_TLS         string = "vless://4da78355-31ea-4f2d-b4e5-23800a1873ba@1.2.3.4:443?type=tcp&encryption=none&security=tls&sni=example.com&fp=firefox&spx=%2F&flow=xtls-rprx-vision#ring0-raii-idx0"
 	URI_VLESS_MKCP            string = "vless://0b0f23d5-b18b-4d4f-9fe6-0ca218fb04dc@1.2.3.4:443?type=kcp&encryption=none&headerType=dtls&seed=FnItITnyKO&security=none#j0kc18zb"
 	URI_VLESS_WEBSOCKET_TLS   string = "vless://bb5729ac-2f0f-4f2c-812f-86cfcc76c095@1.2.3.4:443?type=ws&encryption=none&path=%2F&host=h&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&sni=google.com&ech=AF3%2BDQBZAAAgACD1OUhamXCNu1WOWNKywNPTujyCiv3QN1cFLN%2BE0hRKfwAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D#89e22ges"
 	URI_VLESS_GRPC_REALITY    string = "vless://6883ff2d-d3c1-4597-a541-65c16e41065e@1.2.3.4:443?type=grpc&encryption=none&serviceName=sn&authority=au&security=reality&pbk=WjuE_vMYhy6_CXH1lwtPbllnbQZYHk9nuXubS9YicRU&fp=chrome&sni=google.com&sid=03cbc01665&spx=%2F#9yfgrep5"
@@ -25,6 +27,7 @@ const (
 	URI_VLESS_XHTTP_TLS_EXTRA string = "vless://cca5681a-8d59-4ac7-a829-8d0c462b90b5@1.2.3.4:443?encryption=mlkem768x25519plus.native.0rtt.iiWo3fGIoPSAMRFO_hTG5bZK3OViunHEkXaGDQQ4f2Q&type=xhttp&path=%2Fapi%2Fv1%2Fstream%2Fm3u8&host=discover-fi-hel-ridx01.mesh.example.com&mode=packet-up&extra=%7B%22xmux%22%3A%7B%22cMaxReuseTimes%22%3A%2236-96%22%2C%22maxConcurrency%22%3A%226-16%22%2C%22hKeepAlivePeriod%22%3A0%2C%22hMaxRequestTimes%22%3A%22320-640%22%2C%22hMaxReusableSecs%22%3A%22720-1800%22%7D%2C%22seqKey%22%3A%22offset%22%2C%22headers%22%3A%7B%22Accept%22%3A%22application%2Fvnd.api%2Bjson%2C+application%2Fjson%2C+text%2Fplain%2C+*%2F*%22%2C%22Pragma%22%3A%22no-cache%22%2C%22Cache-Control%22%3A%22no-cache%22%2C%22Accept-Language%22%3A%22ru-RU%2Cru%3Bq%3D0.9%2Cen-US%3Bq%3D0.8%2Cen%3Bq%3D0.7%22%7D%2C%22sessionKey%22%3A%22m3u8_sid%22%2C%22xPaddingKey%22%3A%22q%22%2C%22seqPlacement%22%3A%22query%22%2C%22uplinkDataKey%22%3A%22X-Stream-Token%22%2C%22xPaddingBytes%22%3A%2248-320%22%2C%22xPaddingHeader%22%3A%22X-Rewrite-URL%22%2C%22xPaddingMethod%22%3A%22tokenish%22%2C%22sessionPlacement%22%3A%22cookie%22%2C%22uplinkHTTPMethod%22%3A%22GET%22%2C%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingPlacement%22%3A%22queryInHeader%22%2C%22scMaxBufferedPosts%22%3A32%2C%22scMaxEachPostBytes%22%3A%221536-6144%22%2C%22uplinkDataPlacement%22%3A%22header%22%2C%22scMinPostsIntervalMs%22%3A%224-18%22%2C%22serverMaxHeaderBytes%22%3A32768%7D&security=tls&sni=discover-fi-hel-ridx01.mesh.example.com&fp=chrome&alpn=h2%2Chttp%2F1.1#L4C-02"
 
 	URI_TROJAN_RAW_REALITY     string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=tcp&security=reality&pbk=rh_ToroMlTyQIYIQcH41RmIiaHr5FKtnByRUYA82i3o&fp=chrome&sni=google.com&sid=9675d1&spx=%2F#42j1zdc0"
+	URI_TROJAN_RAW_TLS         string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=tcp&security=tls&fp=chrome&sni=example.com&spx=%2F#42j1zdc0"
 	URI_TROJAN_MKCP            string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=kcp&headerType=dtls&seed=8omUFe2xgl&security=none#42j1zdc0"
 	URI_TROJAN_WEBSOCKET_TLS   string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=ws&path=%2F&host=&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACAGdEfh%2FUGI%2By7XzHs1FPgnkmxw0Ryv09Jm%2B19RCBMvEgAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com#42j1zdc0"
 	URI_TROJAN_GRPC_TLS        string = "trojan://Vtvxlvq2ku@1.2.3.4:443?type=grpc&serviceName=sn&authority=au&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&ech=AF3%2BDQBZAAAgACAGdEfh%2FUGI%2By7XzHs1FPgnkmxw0Ryv09Jm%2B19RCBMvEgAkAAEAAQABAAIAAQADAAIAAQACAAIAAgADAAMAAQADAAIAAwADAApnb29nbGUuY29tAAA%3D&sni=google.com#42j1zdc0"
@@ -46,19 +49,22 @@ const (
 	// URI_SUBJSON_VLESS string = "http://1.2.3.4:2096/json/l08vryrtn0gb07s4"
 )
 
-func xrayParseAndLoad(t *testing.T, uri string) {
-	cfg, err := serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, uri, &serial.ParseParams{EnableDebug: true})
+func xrayParse(t *testing.T, uri string) string {
+	out, err := serial.ParseURI(serial.CONFIG_BACKEND_XRAYCORE, uri, &serial.ParseParams{EnableDebug: true})
 	if err != nil {
-		t.Errorf("error occurred during parsing: %v", err)
-		return
+		t.Fatalf("error occurred during parsing: %v", err)
 	}
 
-	t.Log(cfg)
+	t.Log(out)
+	return out
+}
 
-	_, err = core.LoadConfig("json", bytes.NewReader([]byte(cfg)))
+func xrayParseAndLoad(t *testing.T, uri string) {
+	cfg := xrayParse(t, uri)
+
+	_, err := core.LoadConfig("json", bytes.NewReader([]byte(cfg)))
 	if err != nil {
 		t.Errorf("unable to load xray config: %s", err.Error())
-		return
 	}
 
 	t.Log("successfully loaded uri-based parsed config into xray-core")
@@ -96,6 +102,10 @@ func TestParseURI_VlessRawReality(t *testing.T) {
 	xrayParseAndLoad(t, URI_VLESS_RAW_REALITY)
 }
 
+func TestParseURI_VlessRawTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_VLESS_RAW_TLS)
+}
+
 func TestParseURI_VlessMkcp(t *testing.T) {
 	xrayParseAndLoad(t, URI_VLESS_MKCP)
 }
@@ -124,6 +134,10 @@ func TestParseURI_VlessXhttpTlsExtra(t *testing.T) {
 
 func TestParseURI_TrojanRawReality(t *testing.T) {
 	xrayParseAndLoad(t, URI_TROJAN_RAW_REALITY)
+}
+
+func TestParseURI_TrojanRawTls(t *testing.T) {
+	xrayParseAndLoad(t, URI_TROJAN_RAW_TLS)
 }
 
 func TestParseURI_TrojanMkcp(t *testing.T) {
@@ -209,3 +223,24 @@ func TestParseURI_Hysteria2(t *testing.T) {
 
 // 	t.Log("successfully loaded uri-based parsed config into xray-core")
 // }
+
+// -- SPECIFIC
+
+// TestAlpnIsOmittedWhenAbsent asserts that TLS share links without an alpn
+// query parameter produce no "alpn" field in the generated xray config.
+// Previously `strings.Split("", ",")` yielded `[""]`, which omitempty kept, and
+// `crypto/tls` rejected it with "tls: invalid NextProtos value".
+//
+// See https://github.com/quyxishi/whitebox/issues/15.
+func TestAlpnIsOmittedWhenAbsent(t *testing.T) {
+	for name, uri := range map[string]string{
+		"vless":  URI_VLESS_RAW_TLS,
+		"trojan": URI_TROJAN_RAW_TLS,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if out := xrayParse(t, uri); strings.Contains(out, `"alpn":[`) {
+				t.Errorf("generated config contains alpn that expected to be omitted")
+			}
+		})
+	}
+}
