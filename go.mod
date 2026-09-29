@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/alecthomas/kong v1.16.1
+	github.com/amnezia-vpn/amneziawg-go/v3 v3.1.20260828
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-contrib/pprof v1.5.4
 	github.com/gin-gonic/gin v1.12.0
