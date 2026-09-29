@@ -232,12 +232,18 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 		return
 	}
 
-	xrayConf, ok := h.buildXrayConf(ctx, &params)
-	if !ok {
-		return
+	nativeAWG := strings.HasPrefix(params.Connection, "awg://") || strings.HasPrefix(params.Connection, "awgfile://")
+	var xrayConf string
+	if !nativeAWG {
+		xrayConf, ok = h.buildXrayConf(ctx, &params)
+		if !ok {
+			return
+		}
 	}
 
 	scope := cfg.Scopes[params.Scope]
+	probeCtx, probeCancel := context.WithTimeout(ctx.Request.Context(), scope.Timeout)
+	defer probeCancel()
 
 	slog.Info(
 		"recv probe w/",
@@ -360,41 +366,53 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	// *
 
-	lease, err := h.acquireInstance(ctx.Request.Context(), xrayConf)
-	if err != nil {
-		switch {
-		case errors.Is(err, ErrLoadConfig):
-			slog.Error("failed to load xray config", "err", err)
-			ctx.String(http.StatusInternalServerError, "Unable to load xray config: %s", err.Error())
-		case errors.Is(err, ErrNewInstance):
-			slog.Error("failed to init xray instance", "err", err)
-			ctx.String(http.StatusInternalServerError, "Unable to init xray instance: %s", err.Error())
-		default:
-			slog.Error("failed to start xray instance", "err", err)
-			ctx.String(http.StatusInternalServerError, "Unable to start xray instance: %s", err.Error())
+	var dialContext func(context.Context, string, string) (net.Conn, error)
+	var awgStats awgProbeStats
+	if nativeAWG {
+		var closeTunnel func()
+		var err error
+		dialContext, closeTunnel, err = newAWGDialer(probeCtx, params.Connection, &awgStats)
+		if err != nil {
+			slog.Error("AWG initialization failed", "err", err)
+			ctx.String(http.StatusServiceUnavailable, "AWG initialization failed")
+			return
 		}
-		return
-	}
-	// registered before the transport's own cleanup so that, unwinding LIFO, no
-	// idle connection can outlive the instance it was dialed through
-	defer lease.Release()
+		defer closeTunnel()
+	} else {
+		lease, err := h.acquireInstance(probeCtx, xrayConf)
+		if err != nil {
+			switch {
+			case errors.Is(err, ErrLoadConfig):
+				slog.Error("failed to load xray config", "err", err)
+				ctx.String(http.StatusInternalServerError, "Unable to load xray config: %s", err.Error())
+			case errors.Is(err, ErrNewInstance):
+				slog.Error("failed to init xray instance", "err", err)
+				ctx.String(http.StatusInternalServerError, "Unable to init xray instance: %s", err.Error())
+			default:
+				slog.Error("failed to start xray instance", "err", err)
+				ctx.String(http.StatusInternalServerError, "Unable to start xray instance: %s", err.Error())
+			}
+			return
+		}
+		// registered before the transport's own cleanup so that, unwinding LIFO, no
+		// idle connection can outlive the instance it was dialed through
+		defer lease.Release()
 
-	instance := lease.Value()
-	probeInstanceCachedGauge.Set(float64(Bool2int(lease.Cached())))
+		instance := lease.Value()
+		probeInstanceCachedGauge.Set(float64(Bool2int(lease.Cached())))
 
-	// *
-
-	redirectCounter := RedirectCounter{Max: scope.Http.MaxRedirects}
-
-	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+		dialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 			dest, err := net.ParseDestination(network + ":" + addr)
 			if err != nil {
 				return nil, err
 			}
-
 			return core.Dial(ctx, instance, dest)
-		},
+		}
+	}
+
+	redirectCounter := RedirectCounter{Max: scope.Http.MaxRedirects}
+	transport := &http.Transport{
+		DialContext:  dialContext,
 		MaxIdleConns: 4,
 		// a backstop only; CloseIdleConnections below is the real reaper. left
 		// at its zero value, idle connections over the tunnel are never reaped
@@ -467,7 +485,7 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	// derive from the gin request so a client-side scrape timeout actually
 	// aborts the probe: http.Server.WriteTimeout does not stop the handler
 	// goroutine, and a probe that never returns holds its instance lease open
-	reqCtx, cancel := context.WithTimeout(ctx.Request.Context(), scope.Timeout)
+	reqCtx, cancel := context.WithTimeout(probeCtx, scope.Timeout)
 	defer cancel()
 
 	req = req.WithContext(httptrace.WithClientTrace(reqCtx, trace))
@@ -475,7 +493,6 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 	// *
 
 	var probeSuccess float64 = 1
-	var probeElapsed float64
 	var probeBodyBytes float64
 
 	probeStart := time.Now()
@@ -566,10 +583,6 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 		tt.Finish()
 
-		// wall clock rather than trace timestamps: the dns/connect hooks only
-		// fire for transports whose dial chain reaches a net.Dialer, so a
-		// trace-derived total is 9.2e9 on hysteria2 and wireguard
-		probeElapsed = time.Since(probeStart).Seconds()
 		probeBodyBytes = float64(byteCounter.n)
 
 		if err := byteCounter.Close(); err != nil {
@@ -601,7 +614,20 @@ func (h *ProbeHandler) Probe(ctx *gin.Context) {
 
 	// *
 
-	probeDurationGauge.Set(probeElapsed)
+	if nativeAWG {
+		stats := awgStats.snapshot()
+		for key, description := range map[string]string{
+			"last_handshake_time_sec": "Timestamp of the successful handshake for this probe, or zero",
+			"rx_bytes":                "Bytes received by the fresh AWG tunnel during this probe",
+			"tx_bytes":                "Bytes transmitted by the fresh AWG tunnel during this probe",
+		} {
+			gauge := prometheus.NewGauge(prometheus.GaugeOpts{Name: "tun_probe_awg_" + key, Help: description})
+			gauge.Set(stats[key])
+			registry.MustRegister(gauge)
+		}
+	}
+	// Include failed requests too. Trace hooks do not measure all tunnel dialers.
+	probeDurationGauge.Set(time.Since(probeStart).Seconds())
 	probeSuccessGauge.Set(probeSuccess)
 	probeBodyUncompressedLengthGauge.Set(probeBodyBytes)
 	probeRedirectsGauge.Set(float64(redirectCounter.Total))

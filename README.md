@@ -24,6 +24,8 @@ The features that distinguish whitebox:
 
 ## Getting Started
 
+For AWG 2 profiles and file-based credentials, see [AmneziaWG probes](docs/amneziawg.md).
+
 `whitebox` ships a ready-to-run image on Docker Hub: [`rxyvea/whitebox`](https://hub.docker.com/r/rxyvea/whitebox).
 
 ```shell
